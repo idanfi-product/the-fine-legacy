@@ -1,0 +1,2225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>The Fine Legacy</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            background-color: #09090b;
+            color: #facc15;
+            font-family: 'Courier New', Courier, 'Lucida Console', Monaco, monospace;
+            font-weight: bold;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #scumm-frame {
+            width: 100vw;
+            max-width: 1240px;
+            height: 100vh;
+            max-height: 820px;
+            background: #000000;
+            border: 3px solid #27272a;
+            box-shadow: 0 0 60px rgba(0, 0, 0, 0.98);
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            overflow: hidden;
+        }
+
+        #top-bar {
+            flex: 0 0 auto;
+            min-height: 36px;
+            background: #111827;
+            border-bottom: 2px solid #27272a;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 4px 10px;
+            gap: 6px;
+            flex-wrap: wrap;
+            z-index: 20;
+        }
+
+        .game-title {
+            color: #facc15;
+            font-size: clamp(10px, 1.15vw, 13px);
+            letter-spacing: 0.5px;
+            white-space: nowrap;
+        }
+
+        .top-controls {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            flex-wrap: wrap;
+        }
+
+        .scumm-pill {
+            background: #1f2937;
+            color: #e5e7eb;
+            border: 1px solid #4b5563;
+            border-radius: 3px;
+            font-family: inherit;
+            font-weight: bold;
+            font-size: clamp(9px, 0.95vw, 11px);
+            padding: 3px 7px;
+            cursor: pointer;
+            transition: all 0.1s ease;
+            white-space: nowrap;
+        }
+
+        .scumm-pill:hover { border-color: #facc15; color: #facc15; }
+        .scumm-pill.active { background: #14532d; border-color: #22c55e; color: #bbf7d0; }
+        .scumm-pill.edit-active {
+            background: #7f1d1d;
+            border-color: #ef4444;
+            color: #fecaca;
+            box-shadow: 0 0 8px rgba(239, 68, 68, 0.5);
+        }
+
+        #viewport-wrap {
+            flex: 1 1 65%;
+            width: 100%;
+            position: relative;
+            background: #000000;
+            overflow: hidden;
+            min-height: 200px;
+        }
+
+        canvas#game-canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+            cursor: crosshair;
+        }
+
+        #crt-scanlines {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%);
+            background-size: 100% 3px;
+            pointer-events: none;
+            z-index: 4;
+        }
+
+        #editor-toolbar {
+            display: none;
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            right: 8px;
+            background: rgba(17, 24, 39, 0.94);
+            border: 2px solid #ef4444;
+            border-radius: 4px;
+            padding: 6px 10px;
+            z-index: 15;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            font-size: 11px;
+            color: #f3f4f6;
+        }
+
+        .editor-group { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+
+        .ed-btn {
+            background: #374151;
+            color: #f9fafb;
+            border: 1px solid #6b7280;
+            border-radius: 3px;
+            padding: 3px 7px;
+            font-family: inherit;
+            font-size: 10px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .ed-btn:hover { border-color: #facc15; color: #facc15; }
+        .ed-btn.danger { background: #7f1d1d; border-color: #ef4444; }
+        .ed-btn.primary { background: #15803d; border-color: #22c55e; }
+
+        .ed-input {
+            background: #09090b;
+            color: #facc15;
+            border: 1px solid #4b5563;
+            border-radius: 3px;
+            padding: 2px 5px;
+            font-family: inherit;
+            font-size: 10px;
+            width: 54px;
+        }
+
+        #sentence-bar {
+            flex: 0 0 auto;
+            min-height: 36px;
+            background: #000000;
+            border-top: 1px solid #27272a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 4px 14px;
+            text-align: center;
+            z-index: 10;
+        }
+
+        #sentence-display {
+            color: #facc15;
+            font-size: clamp(11px, 1.35vw, 14px);
+            line-height: 1.25;
+        }
+
+        #control-deck {
+            flex: 0 0 23%;
+            min-height: 120px;
+            max-height: 170px;
+            background: #000000;
+            display: flex;
+            padding: 4px 8px 8px 8px;
+            gap: 10px;
+            position: relative;
+            z-index: 10;
+        }
+
+        #verb-grid {
+            flex: 0 0 47%;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(3, 1fr);
+            background: #000000;
+            border: 1px solid #27272a;
+            border-radius: 4px;
+        }
+
+        .verb-btn {
+            background: transparent;
+            border: none;
+            color: #22c55e;
+            font-family: inherit;
+            font-weight: bold;
+            font-size: clamp(12px, 1.55vw, 18px);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .verb-btn:hover { color: #86efac; background: rgba(34, 197, 94, 0.08); }
+        .verb-btn.active {
+            color: #bbf7d0;
+            background: rgba(34, 197, 94, 0.22);
+            text-shadow: 0 0 8px rgba(74, 222, 128, 0.75);
+        }
+
+        #inventory-grid {
+            flex: 1;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            grid-template-rows: repeat(2, 1fr);
+            background: #1f2937;
+            border: 2px solid #374151;
+            border-radius: 4px;
+            gap: 2px;
+        }
+
+        .inv-slot {
+            background: #111827;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2px;
+            overflow: hidden;
+        }
+        .inv-slot.filled { cursor: pointer; }
+        .inv-slot.filled:hover { background: #1e293b; }
+        .inv-slot.selected {
+            background: #14532d;
+            box-shadow: inset 0 0 0 2px #4ade80;
+        }
+        .inv-slot canvas {
+            width: 44px;
+            height: 30px;
+            image-rendering: pixelated;
+        }
+        .inv-label {
+            font-size: clamp(7px, 0.78vw, 9px);
+            color: #9ca3af;
+            margin-top: 1px;
+            white-space: nowrap;
+        }
+        .inv-slot.selected .inv-label { color: #bbf7d0; }
+
+        #modal-overlay {
+            display: none;
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.88);
+            z-index: 50;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+        }
+
+        .modal-box {
+            background: #111827;
+            border: 3px solid #facc15;
+            border-radius: 6px;
+            max-width: 660px;
+            width: 100%;
+            max-height: 92%;
+            overflow-y: auto;
+            padding: 16px 20px;
+            color: #f3f4f6;
+            text-align: center;
+        }
+        .modal-box h2 { font-size: 16px; color: #facc15; margin-bottom: 8px; }
+        .modal-box p { font-size: 12px; color: #d1d5db; margin-bottom: 10px; line-height: 1.4; }
+        .modal-box img { max-width: 100%; border: 2px solid #374151; margin-bottom: 10px; }
+
+        #export-textarea {
+            width: 100%;
+            height: 220px;
+            background: #09090b;
+            color: #4ade80;
+            border: 1px solid #374151;
+            border-radius: 4px;
+            padding: 8px;
+            font-family: inherit;
+            font-size: 11px;
+            margin-bottom: 12px;
+            resize: vertical;
+        }
+
+        .modal-btns { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
+
+        /* 40th Birthday Card */
+        .bday-card {
+            background: #fdf6e3;
+            color: #3b2f1e;
+            border: 6px double #b8860b;
+            border-radius: 4px;
+            padding: 18px 22px;
+            margin-bottom: 12px;
+            font-family: Georgia, 'Times New Roman', serif;
+            font-weight: normal;
+            text-align: left;
+        }
+        .bday-card .bday-40 {
+            font-size: 64px;
+            line-height: 1;
+            color: #b8860b;
+            text-align: center;
+            font-weight: bold;
+            text-shadow: 2px 2px 0 #f5deb3;
+        }
+        .bday-card .bday-front {
+            text-align: center;
+            font-size: 18px;
+            margin-bottom: 14px;
+            font-style: italic;
+        }
+        .bday-card p { color: #3b2f1e; font-size: 14px; line-height: 1.55; margin-bottom: 10px; }
+        .bday-card .bday-sign { text-align: right; font-style: italic; margin-top: 12px; }
+    </style>
+</head>
+<body>
+
+<div id="scumm-frame">
+    <header id="top-bar">
+        <div class="game-title">THE FINE LEGACY</div>
+        <div class="top-controls">
+            <button class="scumm-pill active" data-room="yard">1A: COURTYARD</button>
+            <button class="scumm-pill" data-room="studio">1B: STUDIO</button>
+            <button class="scumm-pill" id="btn-load-bg">LOAD BG IMAGE</button>
+            <button class="scumm-pill" id="btn-load-sprites">LOAD SPRITES</button>
+            <button class="scumm-pill" id="btn-debug-physics">[P] PHYSICS BOXES</button>
+            <button class="scumm-pill" id="btn-edit-mode">[E] EDIT MODE</button>
+            <button class="scumm-pill" id="btn-export-json">EXPORT ROOM JSON</button>
+        </div>
+    </header>
+
+    <input type="file" id="file-bg-input" accept="image/*" style="display:none;">
+    <input type="file" id="file-sprite-input" accept="image/*" style="display:none;">
+
+    <main id="viewport-wrap">
+        <canvas id="game-canvas" width="640" height="360"></canvas>
+        <div id="crt-scanlines"></div>
+
+        <div id="editor-toolbar">
+            <div class="editor-group">
+                <span style="color:#f87171;">[EDIT MODE]</span>
+                <span>Drag empty space = Draw Collider | Drag box = Move | Drag corner = Resize</span>
+            </div>
+            <div class="editor-group">
+                <label>Selected: <strong id="ed-selected-name" style="color:#facc15;">None</strong></label>
+                <label>DepthY: <input type="number" id="ed-depth-y" class="ed-input" step="2"></label>
+                <button class="ed-btn danger" id="ed-delete-box">DELETE BOX</button>
+                <button class="ed-btn" id="ed-edit-walkbounds">WALK FLOOR Y: <span id="ed-walk-top">245</span></button>
+                <button class="ed-btn primary" id="ed-done-btn">DONE</button>
+            </div>
+        </div>
+    </main>
+
+    <section id="sentence-bar">
+        <div id="sentence-display">Walk to</div>
+    </section>
+
+    <footer id="control-deck">
+        <div id="verb-grid">
+            <button class="verb-btn" data-verb="Give">Give</button>
+            <button class="verb-btn" data-verb="Pick up">Pick up</button>
+            <button class="verb-btn" data-verb="Use">Use</button>
+            <button class="verb-btn" data-verb="Open">Open</button>
+            <button class="verb-btn" data-verb="Look at">Look at</button>
+            <button class="verb-btn" data-verb="Push">Push</button>
+            <button class="verb-btn" data-verb="Close">Close</button>
+            <button class="verb-btn" data-verb="Talk to">Talk to</button>
+            <button class="verb-btn" data-verb="Pull">Pull</button>
+        </div>
+        <div id="inventory-grid"></div>
+    </footer>
+
+    <div id="modal-overlay">
+        <div class="modal-box" id="modal-content"></div>
+    </div>
+</div>
+
+<script>
+(function() {
+    'use strict';
+
+    // =========================================================================
+    // 0. ASSET FILES & STORY TEXT (EDIT THESE FREELY)
+    // =========================================================================
+    // Each asset tries these names in order, inside assets/, with any of the
+    // extensions below. The old hash-named files are kept as fallbacks.
+    const EXTS = ['.jpg', '.jpeg', '.png', '.webp'];
+    const withExts = (base) => EXTS.map(e => base + e);
+    const ASSET_FILES = {
+        yard:    [...withExts('assets/courtyard'), 'assets/cb11c396.jpeg', 'assets/watermarked_img_15033796555511362109.jpg'],
+        studio:  [...withExts('assets/studio'), 'assets/e7ee95ef.jpeg', 'assets/watermarked_img_452717689913521399.jpg'],
+        sprites: [...withExts('assets/sprites'), 'assets/b8517d95.jpeg', 'assets/watermarked_img_17393723907537096894.jpg'],
+        map:     [...withExts('assets/map')],
+        hero:    ['assets/hero.png']
+    };
+
+    // Shown when the player opens the 40th Birthday Card.
+    const BIRTHDAY_CARD = {
+        front: 'Happy 40th Birthday!',
+        paragraphs: [
+            'Forty years! Where did they all go?',
+            'Grandpa David always said that a stone only shows you what is inside it when you are patient enough to really look. He was patient with stone, and he was patient with all of us.',
+            'Before he passed, he asked us to give you this card on your fortieth, and to send you back to Ma\'ayan Baruch. He said he left something there for you, something he started carrying from Johannesburg in 1948.',
+            'His only hint: "Start in the studio, and look the old mask in the eye."'
+        ],
+        signature: 'With all our love,\nThe Family'
+    };
+
+    // =========================================================================
+    // 1. PUZZLE STATE & INVENTORY ITEMS
+    // =========================================================================
+    const flags = {
+        keyTaken: false,        // Studio: key taken from the giant mask's eye
+        hoistUnlocked: false,   // Courtyard: hoist control box unlocked with the key
+        slabLifted: false,      // Courtyard: hoist lifted the iron slab off the crate
+        crateOpened: false,     // Courtyard: 1948 crate opened, ironstone + map found
+        ironstonePlaced: false  // Studio: ironstone placed in the basalt figure's hands
+    };
+
+    const ITEMS = {
+        satchel: {
+            label: 'Satchel',
+            name: "Grandpa's Satchel",
+            icon: 'satchel',
+            verbs: {
+                'Look at': "Grandpa's battered canvas satchel. It has seen more countries than I have.",
+                'Open': 'A pencil stub, a sketchbook full of hands and horses, and a bus ticket to Kiryat Shmona.',
+                'Close': "It's already buckled."
+            }
+        },
+        birthdayCard: {
+            label: '40th Card',
+            name: '40th Birthday Card',
+            icon: 'card',
+            verbs: {
+                'Look at': "A cream card with a big gold '40' on the front. There's writing inside.",
+                'Open': () => { showBirthdayCard(); },
+                'Close': "It's closed. For now."
+            }
+        },
+        hoistKey: {
+            label: 'Iron Key',
+            name: 'Iron Key',
+            icon: 'key',
+            verbs: {
+                'Look at': "An old iron key. A paper tag tied to it reads 'HOIST - D.F.'"
+            }
+        },
+        ironstone: {
+            label: 'Ironstone',
+            name: 'Rough Ironstone',
+            icon: 'rock',
+            verbs: {
+                'Look at': "A rough lump of rust-red ironstone, about the size of a loaf of bread. The note said: 'For the one who holds things up.'"
+            }
+        },
+        oldMap: {
+            label: 'Old Map',
+            name: 'Old Map',
+            icon: 'map',
+            verbs: {
+                'Look at': "A worn map with a dotted red route: New York and Boston, across to London and Amsterdam, then down to Haifa.",
+                'Open': () => { showMap(); }
+            }
+        }
+    };
+
+    // =========================================================================
+    // 2. ROOM DATA (EDITABLE & EXPORTABLE)
+    // =========================================================================
+    // Logical screen resolution is 640 x 360.
+    // - walkBounds: walkable floor rectangle.
+    // - colliders: solid AABB boxes that block the character's foot box.
+    //   depthY: the player draws behind the prop when player.y < depthY.
+    //   alwaysDraw: the prop is not in the background art, so it is drawn from
+    //   the sprite sheet (or procedurally) on top of the background.
+    // - hotspots: interactive objects. verbs: text or functions returning text.
+    //   onItem: { itemId: fn } runs for "Use <item> on <hotspot>".
+    // - fx: screen positions for puzzle overlays (glints, lights, slab).
+    const ROOMS = {
+        yard: {
+            id: 'yard',
+            title: "Ma'ayan Baruch - Studio Courtyard",
+            spawn: { x: 332, y: 318, facing: -1 },
+            perspective: { minY: 255, maxY: 354, minScale: 0.78, maxScale: 1.08 },
+            walkBounds: { minX: 28, maxX: 612, minY: 255, maxY: 352 },
+            fx: {
+                hoistLight: { x: 166, y: 44 },
+                slabChainX: 392,
+                slabChainTop: 26
+            },
+            colliders: [
+                { id: 'boulders_left', label: 'Split Basalt Boulders', x: 138, y: 278, w: 112, h: 66, blocksWalk: true, depthY: 336, propType: 'boulders' },
+                { id: 'crane_left_leg', label: 'Gantry Crane Caster Left', x: 274, y: 314, w: 32, h: 24, blocksWalk: true, depthY: 334, propType: 'craneLeg' },
+                { id: 'crate_1948', label: '1948 Shipping Crate', x: 356, y: 288, w: 118, h: 48, blocksWalk: true, depthY: 332, propType: 'crate', alwaysDraw: true },
+                { id: 'stone_bench_right', label: 'Carving Pedestal Right', x: 492, y: 258, w: 98, h: 32, blocksWalk: true, depthY: 286, propType: 'bench' }
+            ],
+            hotspots: [
+                {
+                    id: 'hebrewSign',
+                    name: 'Sign ("הפסל דוד פיין")',
+                    x: 168, y: 180, w: 62, h: 38,
+                    walkTo: { x: 215, y: 272 },
+                    defaultVerb: 'Look at',
+                    verbs: {
+                        'Look at': 'The sign reads "הפסל דוד פיין": The Sculptor David Fine. Grandpa came here from South Africa in 1948.',
+                        'Pick up': "It's bolted to the fence."
+                    }
+                },
+                {
+                    id: 'gantryCrane',
+                    name: 'Gantry Crane Hoist',
+                    x: 146, y: 0, w: 94, h: 175,
+                    walkTo: { x: 262, y: 304 },
+                    defaultVerb: 'Use',
+                    verbs: {
+                        'Look at': () => !flags.hoistUnlocked
+                            ? "A rusted A-frame gantry crane with a blue electric chain hoist. The hoist's control box is locked shut."
+                            : flags.slabLifted
+                                ? 'The hoist hums. The iron slab hangs safely from the hook.'
+                                : 'The control box is unlocked and the motor is humming. Ready to lift something heavy.',
+                        'Use': () => operateHoist(),
+                        'Pull': () => operateHoist(),
+                        'Push': () => operateHoist(),
+                        'Open': () => flags.hoistUnlocked ? "It's already unlocked." : "The control box is locked. I'd need a key.",
+                        'Pick up': 'It weighs about a tonne. I do not.'
+                    },
+                    onItem: {
+                        hoistKey: () => {
+                            flags.hoistUnlocked = true;
+                            removeItem('hoistKey');
+                            return "The iron key turns with a gritty click. The control box swings open and the hoist motor hums to life!";
+                        }
+                    }
+                },
+                {
+                    id: 'crate1948Spot',
+                    name: '1948 Shipping Crate',
+                    x: 356, y: 250, w: 118, h: 86,
+                    walkTo: { x: 338, y: 316 },
+                    defaultVerb: 'Look at',
+                    verbs: {
+                        'Look at': () => flags.crateOpened
+                            ? 'The crate is open. Old straw, and a smell like 1948.'
+                            : flags.slabLifted
+                                ? 'Stenciled on the timber: "D. FINE - 1948". The slab is off. Only the lid now.'
+                                : 'Stenciled on the timber: "D. FINE - 1948". A massive iron slab is lying on the lid.',
+                        'Open': () => openCrate(),
+                        'Pick up': "It's heavier than I am.",
+                        'Push': () => flags.slabLifted ? "It's not going anywhere, and I don't need it to." : "Not with that iron slab on top. It won't budge.",
+                        'Close': () => flags.crateOpened ? "I'll leave it open. Whatever was inside is mine now." : "It's already closed."
+                    },
+                    onItem: {
+                        hoistKey: () => "There's no keyhole. The lid isn't locked, it's just pinned under that slab."
+                    }
+                },
+                {
+                    id: 'studioDoorSpot',
+                    name: 'Studio Door',
+                    x: 334, y: 156, w: 96, h: 94,
+                    walkTo: { x: 382, y: 268 },
+                    defaultVerb: 'Open',
+                    verbs: {
+                        'Look at': "The green steel door to Grandpa David's sculpture studio.",
+                        'Open': () => { loadRoom('studio', { x: 560, y: 302, facing: -1 }); },
+                        'Use': () => { loadRoom('studio', { x: 560, y: 302, facing: -1 }); }
+                    }
+                }
+            ],
+            exits: [
+                {
+                    id: 'exit_to_studio',
+                    label: 'Enter Studio',
+                    x: 352, y: 252, w: 60, h: 10,
+                    targetRoom: 'studio',
+                    targetSpawn: { x: 560, y: 302, facing: -1 }
+                }
+            ]
+        },
+
+        studio: {
+            id: 'studio',
+            title: "Ma'ayan Baruch - Sculpture Studio",
+            spawn: { x: 540, y: 304, facing: -1 },
+            perspective: { minY: 250, maxY: 358, minScale: 0.74, maxScale: 1.08 },
+            walkBounds: { minX: 30, maxX: 615, minY: 250, maxY: 358 },
+            fx: {
+                maskGlint: { x: 64, y: 156 }
+            },
+            colliders: [
+                { id: 'giant_mask_plinth', label: 'Giant Stone Mask & Figures', x: 18, y: 262, w: 156, h: 78, blocksWalk: true, depthY: 338, propType: 'maskPlinth' },
+                { id: 'tool_pots', label: 'Tool Pots', x: 18, y: 330, w: 82, h: 28, blocksWalk: true, depthY: 356, propType: 'tools' },
+                { id: 'elephant_pedestal', label: 'Elephant Pedestal', x: 150, y: 262, w: 102, h: 36, blocksWalk: true, depthY: 296, propType: 'pedestal' },
+                { id: 'mid_sculptures', label: 'Boulder Sculptures', x: 252, y: 252, w: 120, h: 40, blocksWalk: true, depthY: 290, propType: 'boulders' },
+                { id: 'center_ox_sculpture', label: 'Bear & Small Figures', x: 204, y: 290, w: 156, h: 48, blocksWalk: true, depthY: 336, propType: 'oxSculpture' },
+                { id: 'grey_plinths', label: 'Grey Plinths', x: 372, y: 250, w: 82, h: 16, blocksWalk: true, depthY: 264, propType: 'plinths' },
+                { id: 'right_reclining_plinth', label: 'Reclining Figure Plinth', x: 454, y: 250, w: 104, h: 26, blocksWalk: true, depthY: 274, propType: 'recliningPlinth' },
+                { id: 'basalt_figure', label: 'Carved Basalt Figure', x: 394, y: 292, w: 48, h: 12, blocksWalk: true, depthY: 300, propType: 'atlas', alwaysDraw: true }
+            ],
+            hotspots: [
+                {
+                    id: 'giantMask',
+                    name: 'Giant Stone Mask',
+                    x: 6, y: 112, w: 92, h: 98,
+                    walkTo: { x: 190, y: 330 },
+                    defaultVerb: 'Look at',
+                    verbs: {
+                        'Look at': () => flags.keyTaken
+                            ? 'Pale porous limestone with deep, hollow eyes. Nothing glints in there any more.'
+                            : 'Pale porous limestone with deep, hollow eyes. Something metal glints inside its left eye!',
+                        'Pick up': () => takeKeyFromMask(),
+                        'Use': () => takeKeyFromMask(),
+                        'Push': 'It weighs more than a car.',
+                        'Pull': 'It weighs more than a car.',
+                        'Talk to': () => flags.keyTaken ? 'The mask has nothing more to say.' : 'I look it in the eye, like the card said. It looks back... and something glints.'
+                    }
+                },
+                {
+                    id: 'basaltFigure',
+                    name: 'Carved Basalt Figure',
+                    x: 388, y: 196, w: 60, h: 108,
+                    walkTo: { x: 418, y: 324 },
+                    defaultVerb: 'Look at',
+                    verbs: {
+                        'Look at': () => flags.ironstonePlaced
+                            ? 'The basalt figure holds the ironstone high above its head. It looks finished at last.'
+                            : 'A squat basalt figure with both arms raised over its head, holding up... nothing. The hollow between its hands is rough and unfinished.',
+                        'Pick up': 'Solid basalt. Not a chance.',
+                        'Use': () => flags.ironstonePlaced ? 'It already holds the stone.' : 'Its hands are empty, as if it is waiting for something heavy.',
+                        'Push': 'It does not budge.'
+                    },
+                    onItem: {
+                        ironstone: () => placeIronstone(),
+                        hoistKey: () => "There's no lock on a statue."
+                    }
+                },
+                {
+                    id: 'wallSilhouettes',
+                    name: 'Painted Wall Silhouettes',
+                    x: 210, y: 80, w: 380, h: 80,
+                    walkTo: { x: 380, y: 272 },
+                    defaultVerb: 'Look at',
+                    verbs: {
+                        'Look at': 'Black and grey silhouettes of running children and galloping riders race across the whitewashed walls.'
+                    }
+                },
+                {
+                    id: 'courtyardExitSpot',
+                    name: 'Exit to Courtyard',
+                    x: 600, y: 86, w: 40, h: 175,
+                    walkTo: { x: 590, y: 295 },
+                    defaultVerb: 'Open',
+                    verbs: {
+                        'Look at': "The doorway back out to the Ma'ayan Baruch courtyard.",
+                        'Open': () => { loadRoom('yard', { x: 382, y: 275, facing: 1 }); },
+                        'Use': () => { loadRoom('yard', { x: 382, y: 275, facing: 1 }); }
+                    }
+                }
+            ],
+            exits: [
+                {
+                    id: 'exit_to_yard',
+                    label: 'Exit to Courtyard',
+                    x: 596, y: 274, w: 20, h: 48,
+                    targetRoom: 'yard',
+                    targetSpawn: { x: 382, y: 275, facing: 1 }
+                }
+            ]
+        }
+    };
+
+    // =========================================================================
+    // 3. PUZZLE ACTIONS (ACT I: MA'AYAN BARUCH)
+    // =========================================================================
+    function takeKeyFromMask() {
+        if (flags.keyTaken) return 'Nothing else in there but dust and a dead moth.';
+        flags.keyTaken = true;
+        addItem('hoistKey');
+        return "I reach up into the mask's hollow eye... an old iron key! The tag says 'HOIST - D.F.'";
+    }
+
+    function operateHoist() {
+        if (!flags.hoistUnlocked) {
+            return "The hoist's control box is locked. Grandpa loved hiding things inside his sculptures.";
+        }
+        if (flags.slabLifted) return 'The slab is already up. Better not push my luck.';
+        flags.slabLifted = true;
+        return 'I roll the hoist along the beam, hook the iron slab and press UP. CLANK! The slab rises off the crate lid.';
+    }
+
+    function openCrate() {
+        if (flags.crateOpened) return 'Empty now, except for the straw.';
+        if (!flags.slabLifted) return "The lid won't budge. There's a massive iron slab lying on it. I'd need the crane.";
+        flags.crateOpened = true;
+        addItem('ironstone');
+        addItem('oldMap');
+        return "I lever the lid off. In the straw: a lump of rough ironstone, an old map, and a note: 'For the one who holds things up. - D.' I take them.";
+    }
+
+    function placeIronstone() {
+        flags.ironstonePlaced = true;
+        removeItem('ironstone');
+        setTimeout(showActComplete, 2600);
+        return 'I lift the ironstone into the figure\'s raised hands. It fits perfectly, like it was carved for it. Something clicks deep inside the stone...';
+    }
+
+    // =========================================================================
+    // 4. ASSET & SPRITE SHEET LOADER
+    // =========================================================================
+    const loadedBackgrounds = {}; // roomId -> HTMLImageElement
+    let mapImageSrc = null;
+    const spriteSheet = {
+        canvas: null,
+        ready: false,
+        // Prop and icon regions in assets/sprites.jpg, as fractions of its width/height.
+        // (The hero frames live in assets/hero.png, cut out of this sheet.)
+        regions: {
+            crate:  { x: 0.038, y: 0.456, w: 0.217, h: 0.269 },
+            atlas:  { x: 0.809, y: 0.443, w: 0.156, h: 0.518 },
+            rock:   { x: 0.809, y: 0.443, w: 0.156, h: 0.127 },
+            hammer: { x: 0.077, y: 0.757, w: 0.118, h: 0.212 },
+            key:    { x: 0.282, y: 0.765, w: 0.113, h: 0.183 },
+            map:    { x: 0.464, y: 0.757, w: 0.145, h: 0.188 }
+        },
+        // Fraction of the atlas figure (from its top) taken up by the rock.
+        atlasRockFrac: 0.255
+    };
+
+    // Hero frames: transparent PNG strip, regions in pixels [x, y, w, h].
+    // All frames share one scale (stand height = 112px at full perspective).
+    const heroSheet = {
+        img: null,
+        regions: {
+            stand: [8, 8, 213, 582],
+            walk1: [229, 23, 288, 567],
+            sneak: [525, 50, 316, 540]   // bent forward, used for pick up / use
+        },
+        refHeight: 582
+    };
+
+    function processChromaKeySpriteSheet(img) {
+        try {
+            const w = img.naturalWidth || img.width;
+            const h = img.naturalHeight || img.height;
+            if (!w || !h) return;
+            const off = document.createElement('canvas');
+            off.width = w;
+            off.height = h;
+            const octx = off.getContext('2d');
+            octx.drawImage(img, 0, 0);
+            const imgData = octx.getImageData(0, 0, w, h);
+            const data = imgData.data;
+            for (let i = 0; i < data.length; i += 4) {
+                const r = data[i], g = data[i + 1], b = data[i + 2];
+                if ((r > 170 && b > 170 && g < 115) || (r > 145 && b > 145 && g < Math.min(r, b) * 0.58)) {
+                    data[i + 3] = 0;
+                }
+            }
+            octx.putImageData(imgData, 0, 0);
+            spriteSheet.canvas = off;
+            spriteSheet.ready = true;
+            renderInventory();
+        } catch (e) {
+            spriteSheet.ready = false;
+        }
+    }
+
+    function loadFirstImage(sources, onLoad) {
+        const tryIdx = (idx) => {
+            if (idx >= sources.length) return;
+            const img = new Image();
+            img.onload = () => onLoad(img, sources[idx]);
+            img.onerror = () => tryIdx(idx + 1);
+            img.src = sources[idx];
+        };
+        tryIdx(0);
+    }
+
+    function preloadDefaultAssets() {
+        Object.keys(ROOMS).forEach(roomId => {
+            loadFirstImage(ASSET_FILES[roomId] || [], (img) => { loadedBackgrounds[roomId] = img; });
+        });
+        loadFirstImage(ASSET_FILES.sprites, (img) => processChromaKeySpriteSheet(img));
+        loadFirstImage(ASSET_FILES.map, (img, src) => { mapImageSrc = src; });
+        loadFirstImage(ASSET_FILES.hero, (img) => { heroSheet.img = img; });
+    }
+
+    // Draws a sprite-sheet region into a destination rect. Returns false if not ready.
+    function drawSpriteRegion(targetCtx, key, dx, dy, dw, dh, srcTopFrac = 0) {
+        if (!spriteSheet.ready) return false;
+        const reg = spriteSheet.regions[key];
+        const sc = spriteSheet.canvas;
+        if (!reg || !sc) return false;
+        const sy = reg.y + reg.h * srcTopFrac;
+        const sh = reg.h * (1 - srcTopFrac);
+        targetCtx.drawImage(
+            sc,
+            Math.floor(reg.x * sc.width), Math.floor(sy * sc.height),
+            Math.floor(reg.w * sc.width), Math.floor(sh * sc.height),
+            dx, dy, dw, dh
+        );
+        return true;
+    }
+
+    // =========================================================================
+    // 5. ENGINE STATE
+    // =========================================================================
+    const engine = {
+        currentRoomId: 'yard',
+        showPhysicsDebug: false,
+        editMode: false,
+        modalOpen: false,
+        selectedVerb: null,
+        selectedItem: null,   // inventory item id chosen for "Use X on ..."
+        hoveredSpot: null,
+        hoveredItem: null,
+        inventory: ['satchel', 'birthdayCard'],
+        dialogueText: '',
+        dialogueTimer: 0,
+        banner: { text: '', timer: 0 },
+
+        // x, y = center-bottom of the character's feet
+        player: {
+            x: 332,
+            y: 318,
+            footHalfW: 13,
+            footHalfH: 6,
+            speed: 145,
+            facing: -1,
+            waypoints: [],
+            pendingAction: null,
+            stepTimer: 0,
+            actionTimer: 0   // > 0 shows the bent "reach" pose
+        },
+
+        keysDown: {},
+
+        editor: {
+            selectedColliderId: null,
+            dragMode: null, // 'draw' | 'move' | 'resize'
+            dragStartX: 0,
+            dragStartY: 0,
+            origBox: null,
+            previewBox: null
+        }
+    };
+
+    function getCurrentRoom() {
+        return ROOMS[engine.currentRoomId];
+    }
+
+    // =========================================================================
+    // 6. FOOT-BOX AABB COLLISION & PATHFINDING
+    // =========================================================================
+    function getPlayerFootRect(px, py) {
+        const p = engine.player;
+        return { x: px - p.footHalfW, y: py - p.footHalfH, w: p.footHalfW * 2, h: p.footHalfH * 2 };
+    }
+
+    function rectsOverlap(a, b) {
+        return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+    }
+
+    function isPositionWalkable(px, py, room = getCurrentRoom()) {
+        const foot = getPlayerFootRect(px, py);
+        const wb = room.walkBounds;
+        if (foot.x < wb.minX || foot.x + foot.w > wb.maxX || foot.y < wb.minY || foot.y + foot.h > wb.maxY) {
+            return false;
+        }
+        for (const col of room.colliders) {
+            if (col.blocksWalk && rectsOverlap(foot, col)) return false;
+        }
+        return true;
+    }
+
+    // Per-axis movement so diagonal motion slides along obstacle edges.
+    function movePlayerWithCollision(dx, dy) {
+        const p = engine.player;
+        const room = getCurrentRoom();
+
+        // If we're already inside an obstacle (bad spawn, or a box drawn on top
+        // of the player), move freely until we're out.
+        if (!isPositionWalkable(p.x, p.y, room)) {
+            p.x += dx;
+            p.y += dy;
+            return;
+        }
+
+        if (dx !== 0) {
+            const nextX = p.x + dx;
+            if (isPositionWalkable(nextX, p.y, room)) {
+                p.x = nextX;
+            } else {
+                const step = Math.sign(dx) * 0.5;
+                while (Math.abs(nextX - p.x) >= 0.5 && isPositionWalkable(p.x + step, p.y, room)) p.x += step;
+            }
+        }
+        if (dy !== 0) {
+            const nextY = p.y + dy;
+            if (isPositionWalkable(p.x, nextY, room)) {
+                p.y = nextY;
+            } else {
+                const step = Math.sign(dy) * 0.5;
+                while (Math.abs(nextY - p.y) >= 0.5 && isPositionWalkable(p.x, p.y + step, room)) p.y += step;
+            }
+        }
+    }
+
+    function projectToNearestWalkable(tx, ty, room = getCurrentRoom()) {
+        const wb = room.walkBounds;
+        const p = engine.player;
+        const cx = Math.max(wb.minX + p.footHalfW, Math.min(wb.maxX - p.footHalfW, tx));
+        const cy = Math.max(wb.minY + p.footHalfH, Math.min(wb.maxY - p.footHalfH, ty));
+
+        if (isPositionWalkable(cx, cy, room)) return { x: cx, y: cy };
+
+        for (let radius = 4; radius <= 180; radius += 4) {
+            let bestPt = null;
+            let bestDist = Infinity;
+            for (let angle = 0; angle < Math.PI * 2; angle += Math.PI / 12) {
+                const sx = cx + Math.cos(angle) * radius;
+                const sy = cy + Math.sin(angle) * radius;
+                if (isPositionWalkable(sx, sy, room)) {
+                    const d = Math.hypot(sx - p.x, sy - p.y);
+                    if (d < bestDist) { bestDist = d; bestPt = { x: sx, y: sy }; }
+                }
+            }
+            if (bestPt) return bestPt;
+        }
+        return { x: p.x, y: p.y };
+    }
+
+    /**
+     * Grid A* over the walk area (4px cells), then string-pulled with line-of-sight
+     * so paths are short and straight but still fit through narrow gaps.
+     */
+    function computePathAroundColliders(startX, startY, rawGoalX, rawGoalY) {
+        const room = getCurrentRoom();
+        const goal = projectToNearestWalkable(rawGoalX, rawGoalY, room);
+        const startOk = isPositionWalkable(startX, startY, room);
+
+        if (startOk && lineOfSightWalkable(startX, startY, goal.x, goal.y, room)) return [goal];
+
+        const CELL = 4;
+        const wb = room.walkBounds;
+        const cols = Math.ceil((wb.maxX - wb.minX) / CELL);
+        const rows = Math.ceil((wb.maxY - wb.minY) / CELL);
+        const total = cols * rows;
+        const cx = c => wb.minX + (c + 0.5) * CELL;
+        const cy = r => wb.minY + (r + 0.5) * CELL;
+        const walk = new Int8Array(total).fill(-1);
+        const isWalk = (c, r) => {
+            if (c < 0 || r < 0 || c >= cols || r >= rows) return false;
+            const i = r * cols + c;
+            if (walk[i] === -1) walk[i] = isPositionWalkable(cx(c), cy(r), room) ? 1 : 0;
+            return walk[i] === 1;
+        };
+        const clampC = x => Math.max(0, Math.min(cols - 1, Math.floor((x - wb.minX) / CELL)));
+        const clampR = y => Math.max(0, Math.min(rows - 1, Math.floor((y - wb.minY) / CELL)));
+
+        const sC = clampC(startX), sR = clampR(startY);
+        const gC = clampC(goal.x), gR = clampR(goal.y);
+        const startIdx = sR * cols + sC;
+        const goalIdx = gR * cols + gC;
+
+        const gScore = new Float32Array(total).fill(Infinity);
+        const came = new Int32Array(total).fill(-1);
+        const closed = new Uint8Array(total);
+        const h = (c, r) => Math.hypot(c - gC, r - gR);
+
+        // Small binary heap keyed on f-score
+        const heap = [];
+        const push = (i, f) => {
+            heap.push([f, i]);
+            let k = heap.length - 1;
+            while (k > 0) {
+                const p = (k - 1) >> 1;
+                if (heap[p][0] <= heap[k][0]) break;
+                [heap[p], heap[k]] = [heap[k], heap[p]];
+                k = p;
+            }
+        };
+        const pop = () => {
+            const top = heap[0];
+            const last = heap.pop();
+            if (heap.length) {
+                heap[0] = last;
+                let k = 0;
+                for (;;) {
+                    const l = 2 * k + 1, r = l + 1;
+                    let m = k;
+                    if (l < heap.length && heap[l][0] < heap[m][0]) m = l;
+                    if (r < heap.length && heap[r][0] < heap[m][0]) m = r;
+                    if (m === k) break;
+                    [heap[m], heap[k]] = [heap[k], heap[m]];
+                    k = m;
+                }
+            }
+            return top[1];
+        };
+
+        gScore[startIdx] = 0;
+        push(startIdx, h(sC, sR));
+        let bestIdx = startIdx;
+        let bestH = h(sC, sR);
+        const dirs = [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]];
+
+        while (heap.length) {
+            const cur = pop();
+            if (closed[cur]) continue;
+            closed[cur] = 1;
+            const c = cur % cols, r = (cur / cols) | 0;
+            const hc = h(c, r);
+            if (hc < bestH) { bestH = hc; bestIdx = cur; }
+            if (cur === goalIdx) break;
+
+            for (const [dc, dr] of dirs) {
+                const nc = c + dc, nr = r + dr;
+                if (!isWalk(nc, nr)) continue;
+                if (dc && dr && (!isWalk(c + dc, r) || !isWalk(c, r + dr))) continue; // no corner cutting
+                const ni = nr * cols + nc;
+                if (closed[ni]) continue;
+                const ng = gScore[cur] + (dc && dr ? Math.SQRT2 : 1);
+                if (ng < gScore[ni]) {
+                    gScore[ni] = ng;
+                    came[ni] = cur;
+                    push(ni, ng + h(nc, nr));
+                }
+            }
+        }
+
+        const endIdx = closed[goalIdx] ? goalIdx : bestIdx;
+        if (endIdx === startIdx) return [goal];
+
+        const cellPath = [];
+        for (let i = endIdx; i !== -1 && i !== startIdx; i = came[i]) {
+            cellPath.unshift({ x: cx(i % cols), y: cy((i / cols) | 0) });
+        }
+        if (endIdx === goalIdx) cellPath.push(goal);
+
+        // String-pull: from each anchor, jump to the farthest visible point
+        const path = [];
+        let anchor = { x: startX, y: startY };
+        let i = 0;
+        if (!startOk && cellPath.length) {
+            anchor = cellPath[0];
+            path.push(anchor);
+            i = 1;
+        }
+        while (i < cellPath.length) {
+            let far = i;
+            for (let j = cellPath.length - 1; j > i; j--) {
+                if (lineOfSightWalkable(anchor.x, anchor.y, cellPath[j].x, cellPath[j].y, room)) { far = j; break; }
+            }
+            anchor = cellPath[far];
+            path.push(anchor);
+            i = far + 1;
+        }
+        return path.length ? path : [goal];
+    }
+
+    function lineOfSightWalkable(x1, y1, x2, y2, room) {
+        const d = Math.hypot(x2 - x1, y2 - y1);
+        const steps = Math.max(1, Math.ceil(d / 6));
+        for (let i = 1; i <= steps; i++) {
+            const t = i / steps;
+            if (!isPositionWalkable(x1 + (x2 - x1) * t, y1 + (y2 - y1) * t, room)) return false;
+        }
+        return true;
+    }
+
+    function loadRoom(roomId, customSpawn = null) {
+        const room = ROOMS[roomId];
+        if (!room) return;
+        engine.currentRoomId = roomId;
+        engine.editor.selectedColliderId = null;
+        engine.hoveredSpot = null;
+        updateEditorInspector();
+
+        const sp = customSpawn || room.spawn;
+        engine.player.x = sp.x;
+        engine.player.y = sp.y;
+        engine.player.facing = sp.facing || 1;
+        engine.player.waypoints = [];
+        engine.player.pendingAction = null;
+
+        document.querySelectorAll('.scumm-pill[data-room]').forEach(btn => {
+            btn.classList.toggle('active', btn.getAttribute('data-room') === roomId);
+        });
+
+        engine.banner = { text: room.title, timer: 2.5 };
+        updateSentenceBar();
+    }
+
+    // =========================================================================
+    // 7. UPDATE LOOP
+    // =========================================================================
+    function isMoveKeyDown() {
+        const k = engine.keysDown;
+        return !!(k['ArrowLeft'] || k['ArrowRight'] || k['ArrowUp'] || k['ArrowDown'] ||
+                  k['KeyA'] || k['KeyD'] || k['KeyW'] || k['KeyS']);
+    }
+
+    function updateEngine(dt) {
+        if (engine.dialogueTimer > 0) engine.dialogueTimer -= dt;
+        if (engine.banner.timer > 0) engine.banner.timer -= dt;
+        if (engine.player.actionTimer > 0) engine.player.actionTimer -= dt;
+
+        const p = engine.player;
+        const room = getCurrentRoom();
+
+        // Keyboard walking is disabled in Edit Mode and while a modal is open.
+        const keyboardEnabled = !engine.editMode && !engine.modalOpen;
+        let keyDX = 0;
+        let keyDY = 0;
+        if (keyboardEnabled) {
+            if (engine.keysDown['ArrowLeft'] || engine.keysDown['KeyA']) keyDX -= 1;
+            if (engine.keysDown['ArrowRight'] || engine.keysDown['KeyD']) keyDX += 1;
+            if (engine.keysDown['ArrowUp'] || engine.keysDown['KeyW']) keyDY -= 1;
+            if (engine.keysDown['ArrowDown'] || engine.keysDown['KeyS']) keyDY += 1;
+        }
+
+        if (keyDX !== 0 || keyDY !== 0) {
+            p.waypoints = [];
+            p.pendingAction = null;
+
+            const len = Math.hypot(keyDX, keyDY);
+            if (keyDX !== 0) p.facing = Math.sign(keyDX);
+            movePlayerWithCollision((keyDX / len) * p.speed * dt, (keyDY / len) * p.speed * dt);
+            p.stepTimer += dt;
+            checkRoomExits(room);
+            return;
+        }
+
+        if (p.waypoints.length > 0) {
+            const wp = p.waypoints[0];
+            const dx = wp.x - p.x;
+            const dy = wp.y - p.y;
+            const dist = Math.hypot(dx, dy);
+            let reachedEnd = false;
+
+            if (dist <= 3) {
+                p.x = wp.x;
+                p.y = wp.y;
+                p.waypoints.shift();
+                reachedEnd = p.waypoints.length === 0;
+            } else {
+                const stepDist = Math.min(dist, p.speed * dt);
+                if (Math.abs(dx) > 0.5) p.facing = Math.sign(dx);
+
+                const prevX = p.x;
+                const prevY = p.y;
+                movePlayerWithCollision((dx / dist) * stepDist, (dy / dist) * stepDist);
+                p.stepTimer += dt;
+
+                // Blocked against an obstacle: drop this waypoint (close enough).
+                if (Math.hypot(p.x - prevX, p.y - prevY) < 0.05) {
+                    p.waypoints.shift();
+                    reachedEnd = p.waypoints.length === 0;
+                }
+            }
+
+            if (reachedEnd && p.pendingAction) {
+                const act = p.pendingAction;
+                p.pendingAction = null;
+                faceHotspot(act.spot);
+                if (act.item || ['Pick up', 'Use', 'Open', 'Push', 'Pull', 'Give', 'Close'].includes(act.verb)) {
+                    p.actionTimer = 0.7;
+                }
+                if (act.item) {
+                    useItemOnHotspot(act.item, act.spot, act.verb);
+                } else {
+                    executeHotspotVerb(act.spot, act.verb);
+                }
+                return;
+            }
+            checkRoomExits(room);
+        }
+    }
+
+    function faceHotspot(spot) {
+        const cx = spot.x + spot.w / 2;
+        if (Math.abs(cx - engine.player.x) > 4) engine.player.facing = Math.sign(cx - engine.player.x);
+    }
+
+    function checkRoomExits(room) {
+        if (engine.editMode) return;
+        const foot = getPlayerFootRect(engine.player.x, engine.player.y);
+        for (const ex of room.exits) {
+            if (rectsOverlap(foot, ex)) {
+                loadRoom(ex.targetRoom, ex.targetSpawn);
+                return;
+            }
+        }
+    }
+
+    // =========================================================================
+    // 8. RENDERING (BACKGROUND + Y-SORTED PROPS + OVERLAYS)
+    // =========================================================================
+    const canvas = document.getElementById('game-canvas');
+    const ctx = canvas.getContext('2d');
+    ctx.imageSmoothingEnabled = false;
+
+    function px(x, y, w, h, col) {
+        ctx.fillStyle = col;
+        ctx.fillRect(Math.floor(x), Math.floor(y), Math.floor(w), Math.floor(h));
+    }
+
+    function drawRoomBackground(room) {
+        const bgImg = loadedBackgrounds[room.id];
+        if (bgImg) {
+            ctx.drawImage(bgImg, 0, 0, 640, 360);
+            return;
+        }
+
+        // Procedural fallback when no image is loaded
+        if (room.id === 'yard') {
+            px(0, 0, 640, 255, '#9ec5e6');
+            for (let i = 0; i < 40; i++) {
+                px(180 + (i * 33) % 460, 8 + (i * 19) % 145, 46, 24, i % 2 === 0 ? '#3f7a34' : '#559642');
+            }
+            px(0, 255, 640, 105, '#8d8780');
+            px(24, 72, 290, 183, '#c8bfa8');
+            px(324, 88, 260, 167, '#1b3b2b');
+            px(168, 180, 62, 38, '#1f4d3a');
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 10px sans-serif';
+            ctx.fillText('הפסל', 184, 196);
+            ctx.fillText('דוד פיין', 176, 210);
+            px(230, 14, 12, 320, '#6e3b23');
+            px(150, 4, 120, 10, '#6e3b23');
+            px(152, 14, 40, 26, '#2563eb');
+            px(160, 32, 16, 26, '#9ca3af');
+        } else {
+            px(0, 0, 640, 70, '#7d7368');
+            px(0, 70, 640, 185, '#e8e4dc');
+            px(0, 255, 640, 105, '#cfc9be');
+            px(8, 115, 84, 92, '#8c8984');
+            px(26, 146, 16, 10, '#2a2724');
+            px(58, 146, 16, 10, '#2a2724');
+        }
+    }
+
+    // Props: drawn in Y-depth order with the player.
+    function drawColliderPropVisual(col, time) {
+        const hasBg = !!loadedBackgrounds[engine.currentRoomId];
+        if (!col.alwaysDraw && hasBg) return; // prop is part of the background art
+
+        if (col.propType === 'crate') {
+            drawCrate(col, time);
+        } else if (col.propType === 'atlas') {
+            drawAtlasFigure(col, time);
+        } else if (col.propType === 'boulders') {
+            px(col.x + 8, col.y - 36, col.w - 16, col.h + 32, '#3d3a36');
+            px(col.x + 18, col.y - 46, col.w - 40, 24, '#57534e');
+        } else if (col.propType === 'oxSculpture' || col.propType === 'maskPlinth') {
+            px(col.x + 6, col.y - 34, col.w - 12, col.h + 30, '#8c8984');
+            px(col.x + 16, col.y - 48, col.w - 32, 22, '#a8a29e');
+        }
+    }
+
+    function drawCrate(col, time) {
+        const reg = spriteSheet.regions.crate;
+        const dw = col.w;
+        let dh = col.h + 34;
+        if (spriteSheet.ready) {
+            dh = dw * (reg.h * spriteSheet.canvas.height) / (reg.w * spriteSheet.canvas.width);
+        }
+        const dx = col.x;
+        const dy = col.y + col.h - dh;
+
+        if (!drawSpriteRegion(ctx, 'crate', dx, dy, dw, dh)) {
+            px(dx, dy, dw, dh, '#9c6644');
+            ctx.strokeStyle = '#432818';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(dx, dy, dw, dh);
+            ctx.fillStyle = '#24170e';
+            ctx.font = 'bold 9px monospace';
+            ctx.fillText('D. FINE - 1948', dx + 20, dy + dh / 2);
+        }
+
+        const topY = dy + dh * 0.04;
+        if (flags.crateOpened) {
+            // Open top: dark interior with straw, lid leaning on the side
+            px(dx + dw * 0.06, topY + 2, dw * 0.88, dh * 0.16, '#1c140c');
+            px(dx + dw * 0.1, topY + dh * 0.1, dw * 0.8, dh * 0.06, '#c9a54a');
+            ctx.save();
+            ctx.translate(dx + dw + 2, dy + dh);
+            ctx.rotate(-1.35);
+            px(0, 0, dh * 0.95, 7, '#8a5a34');
+            px(0, 0, dh * 0.95, 2, '#5e3b1f');
+            ctx.restore();
+        } else if (!flags.slabLifted) {
+            // Heavy iron slab pinning the lid
+            px(dx + 4, topY - 6, dw - 8, 10, '#3f3f46');
+            px(dx + 4, topY - 6, dw - 8, 2, '#71717a');
+            px(dx + 4, topY + 3, dw - 8, 1, '#18181b');
+        }
+    }
+
+    function drawAtlasFigure(col, time) {
+        const reg = spriteSheet.regions.atlas;
+        const cx = col.x + col.w / 2;
+        const baseY = col.y + col.h;
+        const fullH = 104;
+        let fullW = 56;
+        if (spriteSheet.ready) {
+            fullW = fullH * (reg.w * spriteSheet.canvas.width) / (reg.h * spriteSheet.canvas.height);
+        }
+        const rockFrac = flags.ironstonePlaced ? 0 : spriteSheet.atlasRockFrac;
+        const drawH = fullH * (1 - rockFrac);
+
+        if (!drawSpriteRegion(ctx, 'atlas', cx - fullW / 2, baseY - drawH, fullW, drawH, rockFrac)) {
+            // Procedural fallback: grey figure with raised arms
+            px(cx - 14, baseY - 52, 28, 52, '#4b5563');
+            px(cx - 9, baseY - 66, 18, 16, '#6b7280');
+            px(cx - 20, baseY - 72, 7, 26, '#4b5563');
+            px(cx + 13, baseY - 72, 7, 26, '#4b5563');
+            if (flags.ironstonePlaced) px(cx - 20, baseY - 90, 40, 20, '#8b4a2b');
+        }
+
+        if (flags.ironstonePlaced) {
+            const glow = 0.18 + 0.12 * Math.sin(time * 3);
+            ctx.fillStyle = `rgba(250, 160, 60, ${glow})`;
+            ctx.beginPath();
+            ctx.ellipse(cx, baseY - fullH * 0.82, fullW * 0.6, fullH * 0.18, 0, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    }
+
+    // Overlays that sit on the background (glints, lights, hanging slab)
+    function drawRoomFx(room, time) {
+        const fx = room.fx || {};
+        if (room.id === 'studio' && !flags.keyTaken && fx.maskGlint) {
+            const a = Math.max(0, Math.sin(time * 2.6));
+            if (a > 0.15) {
+                const g = fx.maskGlint;
+                const r = 2 + a * 4;
+                ctx.strokeStyle = `rgba(255, 250, 200, ${a})`;
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.moveTo(g.x - r, g.y); ctx.lineTo(g.x + r, g.y);
+                ctx.moveTo(g.x, g.y - r); ctx.lineTo(g.x, g.y + r);
+                ctx.stroke();
+                ctx.fillStyle = `rgba(255, 255, 255, ${a})`;
+                ctx.fillRect(g.x - 1, g.y - 1, 2, 2);
+            }
+        }
+        if (room.id === 'yard') {
+            if (fx.hoistLight) {
+                const on = Math.floor(time * 2) % 2 === 0;
+                const l = fx.hoistLight;
+                px(l.x - 3, l.y - 3, 6, 6, '#111');
+                px(l.x - 2, l.y - 2, 4, 4, flags.hoistUnlocked ? '#22c55e' : (on ? '#ef4444' : '#7f1d1d'));
+            }
+            if (flags.slabLifted && fx.slabChainX) {
+                const sway = Math.sin(time * 1.4) * 2;
+                const sx = fx.slabChainX + sway;
+                ctx.strokeStyle = '#a1a1aa';
+                ctx.lineWidth = 1.5;
+                ctx.setLineDash([3, 2]);
+                ctx.beginPath();
+                ctx.moveTo(fx.slabChainX, fx.slabChainTop || 14);
+                ctx.lineTo(sx, 160);
+                ctx.stroke();
+                ctx.setLineDash([]);
+                px(sx - 4, 158, 8, 6, '#eab308');
+                px(sx - 52, 166, 104, 10, '#3f3f46');
+                px(sx - 52, 166, 104, 2, '#71717a');
+            }
+        }
+    }
+
+    function drawProtagonist(time) {
+        const p = engine.player;
+        const persp = getCurrentRoom().perspective;
+
+        const t = Math.max(0, Math.min(1, (p.y - persp.minY) / Math.max(1, persp.maxY - persp.minY)));
+        const scale = persp.minScale + (persp.maxScale - persp.minScale) * t;
+
+        const isWalking = p.waypoints.length > 0 || (!engine.editMode && !engine.modalOpen && isMoveKeyDown());
+        const x = Math.floor(p.x);
+        const y = Math.floor(p.y);
+
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.36)';
+        ctx.beginPath();
+        ctx.ellipse(x, y + 2, 16 * scale, 5 * scale, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        if (heroSheet.img) {
+            // 2-frame stride (walk1 <-> stand) with a small bob; bent pose for actions
+            let frame = 'stand';
+            let bobY = 0;
+            if (p.actionTimer > 0) {
+                frame = 'sneak';
+            } else if (isWalking) {
+                const phase = Math.floor(time * 6) % 2;
+                frame = phase === 0 ? 'walk1' : 'stand';
+                bobY = phase === 0 ? 1 : -1;
+            }
+            const [sx, sy, sw, sh] = heroSheet.regions[frame];
+            const k = (112 * scale) / heroSheet.refHeight;
+            const drawW = sw * k;
+            const drawH = sh * k;
+
+            ctx.save();
+            ctx.imageSmoothingEnabled = true;
+            ctx.translate(x, y + bobY);
+            if (p.facing === -1) ctx.scale(-1, 1);
+            ctx.drawImage(heroSheet.img, sx, sy, sw, sh, -drawW / 2, -drawH + 4, drawW, drawH);
+            ctx.restore();
+            return { headY: y - drawH };
+        }
+
+        const bob = isWalking ? Math.abs(Math.sin(time * 14)) * 3 : 0;
+        const stride = isWalking ? Math.sin(time * 14) * 5 : 0;
+
+        ctx.save();
+        ctx.translate(x, Math.floor(y - bob));
+        ctx.scale(scale, scale);
+        px(-9 + stride, -34, 7, 30, '#5c5847');
+        px(2 - stride, -34, 7, 30, '#4d493b');
+        px(-13, -72, 26, 38, '#6e4323');
+        px(-4, -72, 8, 36, '#dee2e6');
+        px(-9, -95, 18, 23, '#f1c29b');
+        px(-11, -101, 22, 9, '#4a2c18');
+        ctx.restore();
+        return { headY: y - 101 * scale };
+    }
+
+    function wrapText(text, maxW) {
+        const words = text.split(' ');
+        const lines = [];
+        let line = '';
+        for (const w of words) {
+            const test = line ? line + ' ' + w : w;
+            if (ctx.measureText(test).width > maxW && line) {
+                lines.push(line);
+                line = w;
+            } else {
+                line = test;
+            }
+        }
+        if (line) lines.push(line);
+        return lines;
+    }
+
+    // Character speech, drawn above the player's head (SCUMM style)
+    function drawSpeech(headY) {
+        if (engine.dialogueTimer <= 0 || !engine.dialogueText) return;
+        ctx.font = 'bold 12px "Courier New", monospace';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'alphabetic';
+        const lines = wrapText(engine.dialogueText, 300);
+        const lineH = 14;
+        const widest = Math.max(...lines.map(l => ctx.measureText(l).width));
+        const cx = Math.max(widest / 2 + 6, Math.min(640 - widest / 2 - 6, engine.player.x));
+        let top = headY - 8 - lines.length * lineH;
+        top = Math.max(16, top);
+
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = '#000';
+        ctx.fillStyle = '#fde68a';
+        lines.forEach((l, i) => {
+            const ly = top + i * lineH;
+            ctx.strokeText(l, cx, ly);
+            ctx.fillText(l, cx, ly);
+        });
+        ctx.textAlign = 'left';
+    }
+
+    function drawBanner() {
+        if (engine.banner.timer <= 0) return;
+        const a = Math.min(1, engine.banner.timer);
+        ctx.font = 'bold 13px "Courier New", monospace';
+        ctx.textAlign = 'center';
+        const w = ctx.measureText(engine.banner.text).width + 24;
+        ctx.fillStyle = `rgba(0, 0, 0, ${0.7 * a})`;
+        ctx.fillRect(320 - w / 2, 10, w, 22);
+        ctx.fillStyle = `rgba(250, 204, 21, ${a})`;
+        ctx.fillText(engine.banner.text, 320, 25);
+        ctx.textAlign = 'left';
+    }
+
+    function renderScene(time) {
+        const room = getCurrentRoom();
+        ctx.clearRect(0, 0, 640, 360);
+
+        drawRoomBackground(room);
+        drawRoomFx(room, time);
+
+        const renderables = room.colliders.map(col => ({ type: 'collider', sortY: col.depthY || (col.y + col.h), data: col }));
+        renderables.push({ type: 'player', sortY: engine.player.y });
+        renderables.sort((a, b) => a.sortY - b.sortY);
+
+        let headY = engine.player.y - 112;
+        for (const item of renderables) {
+            if (item.type === 'collider') {
+                drawColliderPropVisual(item.data, time);
+            } else {
+                headY = drawProtagonist(time).headY;
+            }
+        }
+
+        if (engine.player.waypoints.length > 0) {
+            ctx.strokeStyle = 'rgba(250, 204, 21, 0.65)';
+            ctx.lineWidth = 1.5;
+            ctx.setLineDash([4, 4]);
+            ctx.beginPath();
+            ctx.moveTo(engine.player.x, engine.player.y);
+            for (const wp of engine.player.waypoints) ctx.lineTo(wp.x, wp.y);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            const lastWp = engine.player.waypoints[engine.player.waypoints.length - 1];
+            ctx.fillStyle = '#facc15';
+            ctx.fillRect(lastWp.x - 3, lastWp.y - 3, 6, 6);
+        }
+
+        // Physics boxes only in Edit Mode or when toggled with [P]
+        if (engine.showPhysicsDebug || engine.editMode) {
+            renderPhysicsAndEditorOverlay(room);
+        }
+
+        drawSpeech(headY);
+        drawBanner();
+    }
+
+    function renderPhysicsAndEditorOverlay(room) {
+        const wb = room.walkBounds;
+
+        ctx.strokeStyle = '#22c55e';
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([6, 4]);
+        ctx.strokeRect(wb.minX, wb.minY, wb.maxX - wb.minX, wb.maxY - wb.minY);
+        ctx.setLineDash([]);
+
+        for (const ex of room.exits) {
+            ctx.fillStyle = 'rgba(168, 85, 247, 0.25)';
+            ctx.fillRect(ex.x, ex.y, ex.w, ex.h);
+            ctx.strokeStyle = '#c084fc';
+            ctx.lineWidth = 1.5;
+            ctx.strokeRect(ex.x, ex.y, ex.w, ex.h);
+        }
+
+        for (const hs of room.hotspots) {
+            ctx.strokeStyle = 'rgba(56, 189, 248, 0.65)';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(hs.x, hs.y, hs.w, hs.h);
+        }
+
+        for (const col of room.colliders) {
+            const isSelected = engine.editMode && engine.editor.selectedColliderId === col.id;
+            ctx.fillStyle = isSelected ? 'rgba(250, 204, 21, 0.32)' : 'rgba(239, 68, 68, 0.28)';
+            ctx.fillRect(col.x, col.y, col.w, col.h);
+            ctx.strokeStyle = isSelected ? '#facc15' : '#ef4444';
+            ctx.lineWidth = isSelected ? 2 : 1.5;
+            ctx.strokeRect(col.x, col.y, col.w, col.h);
+
+            if (col.depthY) {
+                ctx.strokeStyle = '#60a5fa';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(col.x, col.depthY);
+                ctx.lineTo(col.x + col.w, col.depthY);
+                ctx.stroke();
+            }
+
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 9px monospace';
+            ctx.fillText(col.label || col.id, col.x + 3, col.y + 10);
+
+            if (engine.editMode) {
+                ctx.fillStyle = isSelected ? '#facc15' : '#ef4444';
+                ctx.fillRect(col.x + col.w - 6, col.y + col.h - 6, 6, 6);
+            }
+        }
+
+        if (engine.editMode && engine.editor.dragMode === 'draw' && engine.editor.previewBox) {
+            const pb = engine.editor.previewBox;
+            ctx.fillStyle = 'rgba(250, 204, 21, 0.25)';
+            ctx.fillRect(pb.x, pb.y, pb.w, pb.h);
+            ctx.strokeStyle = '#facc15';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(pb.x, pb.y, pb.w, pb.h);
+        }
+
+        const foot = getPlayerFootRect(engine.player.x, engine.player.y);
+        ctx.fillStyle = 'rgba(74, 222, 128, 0.35)';
+        ctx.fillRect(foot.x, foot.y, foot.w, foot.h);
+        ctx.strokeStyle = '#4ade80';
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(foot.x, foot.y, foot.w, foot.h);
+    }
+
+    // =========================================================================
+    // 9. EDIT MODE
+    // =========================================================================
+    function toggleEditMode(forceState = null) {
+        engine.editMode = forceState !== null ? forceState : !engine.editMode;
+        document.getElementById('btn-edit-mode').classList.toggle('edit-active', engine.editMode);
+        document.getElementById('editor-toolbar').style.display = engine.editMode ? 'flex' : 'none';
+        engine.player.waypoints = [];
+        engine.player.pendingAction = null;
+        engine.hoveredSpot = null;
+        updateEditorInspector();
+        say(engine.editMode
+            ? 'EDIT MODE ON: drag empty floor to draw a collision box, or drag boxes to move/resize.'
+            : 'Edit Mode closed.');
+    }
+
+    function updateEditorInspector() {
+        const room = getCurrentRoom();
+        const col = room.colliders.find(c => c.id === engine.editor.selectedColliderId);
+        document.getElementById('ed-selected-name').textContent = col ? (col.label || col.id) : 'None';
+        const depthInput = document.getElementById('ed-depth-y');
+        depthInput.value = col ? (col.depthY || (col.y + col.h)) : '';
+        depthInput.disabled = !col;
+        document.getElementById('ed-walk-top').textContent = room.walkBounds.minY;
+    }
+
+    function getCanvasLogicalPos(e) {
+        const rect = canvas.getBoundingClientRect();
+        return {
+            x: Math.round(((e.clientX - rect.left) / rect.width) * 640),
+            y: Math.round(((e.clientY - rect.top) / rect.height) * 360)
+        };
+    }
+
+    canvas.addEventListener('mousedown', (e) => {
+        if (!engine.editMode || e.button !== 0) return;
+        const pt = getCanvasLogicalPos(e);
+        const room = getCurrentRoom();
+
+        for (let i = room.colliders.length - 1; i >= 0; i--) {
+            const col = room.colliders[i];
+            if (pt.x >= col.x + col.w - 8 && pt.x <= col.x + col.w + 4 &&
+                pt.y >= col.y + col.h - 8 && pt.y <= col.y + col.h + 4) {
+                Object.assign(engine.editor, { selectedColliderId: col.id, dragMode: 'resize', dragStartX: pt.x, dragStartY: pt.y, origBox: { ...col } });
+                updateEditorInspector();
+                return;
+            }
+            if (pt.x >= col.x && pt.x <= col.x + col.w && pt.y >= col.y && pt.y <= col.y + col.h) {
+                Object.assign(engine.editor, { selectedColliderId: col.id, dragMode: 'move', dragStartX: pt.x, dragStartY: pt.y, origBox: { ...col } });
+                updateEditorInspector();
+                return;
+            }
+        }
+
+        Object.assign(engine.editor, {
+            selectedColliderId: null,
+            dragMode: 'draw',
+            dragStartX: pt.x,
+            dragStartY: pt.y,
+            previewBox: { x: pt.x, y: pt.y, w: 1, h: 1 }
+        });
+        updateEditorInspector();
+    });
+
+    function findHotspotAt(pt) {
+        return getCurrentRoom().hotspots.find(s => pt.x >= s.x && pt.x <= s.x + s.w && pt.y >= s.y && pt.y <= s.y + s.h) || null;
+    }
+
+    canvas.addEventListener('mousemove', (e) => {
+        const pt = getCanvasLogicalPos(e);
+
+        if (engine.editMode && engine.editor.dragMode) {
+            const ed = engine.editor;
+            const col = getCurrentRoom().colliders.find(c => c.id === ed.selectedColliderId);
+
+            if (ed.dragMode === 'draw') {
+                ed.previewBox = {
+                    x: Math.min(ed.dragStartX, pt.x),
+                    y: Math.min(ed.dragStartY, pt.y),
+                    w: Math.max(8, Math.abs(pt.x - ed.dragStartX)),
+                    h: Math.max(8, Math.abs(pt.y - ed.dragStartY))
+                };
+            } else if (ed.dragMode === 'move' && col && ed.origBox) {
+                col.x = Math.max(0, Math.min(640 - col.w, ed.origBox.x + pt.x - ed.dragStartX));
+                col.y = Math.max(0, Math.min(360 - col.h, ed.origBox.y + pt.y - ed.dragStartY));
+                col.depthY = Math.round(col.y + col.h - 4);
+                updateEditorInspector();
+            } else if (ed.dragMode === 'resize' && col && ed.origBox) {
+                col.w = Math.max(12, ed.origBox.w + (pt.x - ed.dragStartX));
+                col.h = Math.max(10, ed.origBox.h + (pt.y - ed.dragStartY));
+                col.depthY = Math.round(col.y + col.h - 4);
+                updateEditorInspector();
+            }
+            return;
+        }
+
+        if (!engine.editMode) {
+            const spot = findHotspotAt(pt);
+            if (spot !== engine.hoveredSpot) {
+                engine.hoveredSpot = spot;
+                updateSentenceBar();
+            }
+        }
+    });
+
+    canvas.addEventListener('mouseleave', () => {
+        engine.hoveredSpot = null;
+        updateSentenceBar();
+    });
+
+    window.addEventListener('mouseup', () => {
+        if (!engine.editMode || !engine.editor.dragMode) return;
+        const ed = engine.editor;
+
+        if (ed.dragMode === 'draw' && ed.previewBox && ed.previewBox.w >= 10 && ed.previewBox.h >= 8) {
+            const room = getCurrentRoom();
+            const newId = 'collider_' + (room.colliders.length + 1) + '_' + Date.now().toString(36);
+            const newBox = {
+                id: newId,
+                label: 'Obstacle ' + (room.colliders.length + 1),
+                x: ed.previewBox.x,
+                y: ed.previewBox.y,
+                w: ed.previewBox.w,
+                h: ed.previewBox.h,
+                blocksWalk: true,
+                depthY: ed.previewBox.y + ed.previewBox.h - 4
+            };
+            room.colliders.push(newBox);
+            ed.selectedColliderId = newId;
+            updateEditorInspector();
+            say(`Added collision box "${newBox.label}" (${newBox.w}x${newBox.h}).`);
+        }
+
+        ed.dragMode = null;
+        ed.previewBox = null;
+        ed.origBox = null;
+    });
+
+    // =========================================================================
+    // 10. POINT-AND-CLICK, VERBS & INVENTORY
+    // =========================================================================
+    canvas.addEventListener('click', (e) => {
+        if (engine.editMode || engine.modalOpen) return;
+        const pt = getCanvasLogicalPos(e);
+        const spot = findHotspotAt(pt);
+        const p = engine.player;
+
+        if (spot) {
+            const verb = engine.selectedItem
+                ? (engine.selectedVerb === 'Give' ? 'Give' : 'Use')
+                : (engine.selectedVerb || spot.defaultVerb || 'Look at');
+            const dest = spot.walkTo || { x: spot.x + spot.w / 2, y: spot.y + spot.h + 10 };
+            p.waypoints = computePathAroundColliders(p.x, p.y, dest.x, dest.y);
+            p.pendingAction = { spot, verb, item: engine.selectedItem };
+            if (p.waypoints.length === 0) p.waypoints = [{ x: p.x, y: p.y }];
+        } else {
+            p.waypoints = computePathAroundColliders(p.x, p.y, pt.x, pt.y);
+            p.pendingAction = null;
+            if (engine.selectedVerb || engine.selectedItem) clearSelection();
+        }
+    });
+
+    // Right-click cancels the current verb / item
+    canvas.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        clearSelection();
+    });
+
+    function resolveAction(action) {
+        return typeof action === 'function' ? action() : action;
+    }
+
+    function executeHotspotVerb(spot, verb) {
+        const action = spot.verbs[verb];
+        if (action !== undefined) {
+            const res = resolveAction(action);
+            if (typeof res === 'string') say(res);
+        } else if (verb === 'Talk to') {
+            say(`${spot.name} isn't much of a talker.`);
+        } else {
+            say(`I don't see a reason to ${verb.toLowerCase()} the ${spot.name.toLowerCase()}.`);
+        }
+        clearSelection();
+    }
+
+    function useItemOnHotspot(itemId, spot, verb) {
+        const item = ITEMS[itemId];
+        const handler = spot.onItem && spot.onItem[itemId];
+        if (handler && engine.inventory.includes(itemId)) {
+            const res = resolveAction(handler);
+            if (typeof res === 'string') say(res);
+        } else if (verb === 'Give') {
+            say(`I don't think the ${spot.name.toLowerCase()} wants the ${item.name.toLowerCase()}.`);
+        } else {
+            say(`Using the ${item.name.toLowerCase()} on the ${spot.name.toLowerCase()} won't help.`);
+        }
+        clearSelection();
+    }
+
+    function useItemOnItem(aId, bId) {
+        say(`I can't use the ${ITEMS[aId].name.toLowerCase()} with the ${ITEMS[bId].name.toLowerCase()}.`);
+        clearSelection();
+    }
+
+    function runItemVerb(itemId, verb) {
+        const item = ITEMS[itemId];
+        const action = item.verbs[verb];
+        clearSelection();
+        if (action !== undefined) {
+            const res = resolveAction(action);
+            if (typeof res === 'string') say(res);
+        } else if (verb === 'Pick up') {
+            say('I already have it.');
+        } else {
+            say(`I can't ${verb.toLowerCase()} the ${item.name.toLowerCase()}.`);
+        }
+    }
+
+    function onInventoryClick(itemId) {
+        if (engine.modalOpen || engine.editMode) return;
+        if (engine.selectedItem === itemId) {
+            clearSelection();
+            return;
+        }
+        if (engine.selectedItem) {
+            useItemOnItem(engine.selectedItem, itemId);
+            return;
+        }
+        const verb = engine.selectedVerb;
+        if (!verb || verb === 'Use' || verb === 'Give') {
+            // Select item: "Use [Item] on ..." / "Give [Item] to ..."
+            engine.selectedItem = itemId;
+            renderInventory();
+            updateSentenceBar();
+            return;
+        }
+        runItemVerb(itemId, verb);
+    }
+
+    function clearSelection() {
+        engine.selectedVerb = null;
+        engine.selectedItem = null;
+        document.querySelectorAll('.verb-btn').forEach(b => b.classList.remove('active'));
+        renderInventory();
+        updateSentenceBar();
+    }
+
+    function addItem(id) {
+        if (!engine.inventory.includes(id)) engine.inventory.push(id);
+        renderInventory();
+    }
+
+    function removeItem(id) {
+        engine.inventory = engine.inventory.filter(i => i !== id);
+        if (engine.selectedItem === id) engine.selectedItem = null;
+        renderInventory();
+    }
+
+    function say(text) {
+        engine.dialogueText = text;
+        engine.dialogueTimer = Math.min(10, 2.5 + text.length * 0.055);
+    }
+
+    function updateSentenceBar() {
+        const el = document.getElementById('sentence-display');
+        const target = engine.hoveredSpot
+            ? engine.hoveredSpot.name
+            : (engine.hoveredItem && engine.hoveredItem !== engine.selectedItem ? ITEMS[engine.hoveredItem].name : '');
+
+        if (engine.selectedItem) {
+            const isGive = engine.selectedVerb === 'Give';
+            const base = `${isGive ? 'Give' : 'Use'} ${ITEMS[engine.selectedItem].name} ${isGive ? 'to' : 'on'}`;
+            el.textContent = target ? `${base} ${target}` : base;
+        } else if (target) {
+            const v = engine.selectedVerb || (engine.hoveredSpot ? engine.hoveredSpot.defaultVerb : null) || 'Look at';
+            el.textContent = `${v} ${target}`;
+        } else if (engine.selectedVerb) {
+            el.textContent = engine.selectedVerb;
+        } else {
+            el.textContent = 'Walk to';
+        }
+    }
+
+    // ---- Inventory icons ----
+    function drawItemIcon(ic, item) {
+        ic.clearRect(0, 0, 44, 30);
+        ic.imageSmoothingEnabled = false;
+        if (['key', 'map', 'rock', 'hammer'].includes(item.icon) && spriteSheet.ready) {
+            const reg = spriteSheet.regions[item.icon];
+            const sc = spriteSheet.canvas;
+            const sw = reg.w * sc.width, sh = reg.h * sc.height;
+            const s = Math.min(42 / sw, 28 / sh);
+            const dw = sw * s, dh = sh * s;
+            drawSpriteRegion(ic, item.icon, (44 - dw) / 2, (30 - dh) / 2, dw, dh);
+            return;
+        }
+        const f = (x, y, w, h, c) => { ic.fillStyle = c; ic.fillRect(x, y, w, h); };
+        switch (item.icon) {
+            case 'satchel':
+                f(12, 4, 20, 3, '#5e3b1f');
+                f(10, 10, 24, 16, '#8b5a2b');
+                f(10, 10, 24, 7, '#6e4323');
+                f(20, 15, 4, 4, '#d4a017');
+                break;
+            case 'card':
+                f(11, 4, 22, 23, '#fdf6e3');
+                f(11, 4, 22, 2, '#b8860b');
+                ic.fillStyle = '#b8860b';
+                ic.font = 'bold 12px Georgia, serif';
+                ic.textAlign = 'center';
+                ic.fillText('40', 22, 21);
+                break;
+            case 'key':
+                f(8, 12, 8, 8, '#78716c'); f(10, 14, 4, 4, '#111827');
+                f(16, 15, 18, 3, '#78716c'); f(28, 18, 3, 5, '#78716c'); f(32, 18, 2, 4, '#78716c');
+                break;
+            case 'rock':
+                f(12, 10, 20, 14, '#8b4a2b'); f(14, 8, 14, 4, '#a0522d'); f(16, 14, 6, 4, '#6b3420');
+                break;
+            case 'map':
+                f(9, 6, 26, 19, '#e8d3a2'); f(17, 6, 1, 19, '#b49461'); f(26, 6, 1, 19, '#b49461');
+                f(12, 15, 18, 1, '#b91c1c');
+                break;
+        }
+    }
+
+    function renderInventory() {
+        const grid = document.getElementById('inventory-grid');
+        if (!grid) return;
+        grid.innerHTML = '';
+        for (let i = 0; i < 8; i++) {
+            const id = engine.inventory[i];
+            const slot = document.createElement('div');
+            slot.className = 'inv-slot';
+            if (id) {
+                const item = ITEMS[id];
+                slot.classList.add('filled');
+                if (engine.selectedItem === id) slot.classList.add('selected');
+                slot.title = item.name;
+
+                const c = document.createElement('canvas');
+                c.width = 44; c.height = 30;
+                drawItemIcon(c.getContext('2d'), item);
+                slot.appendChild(c);
+
+                const lbl = document.createElement('div');
+                lbl.className = 'inv-label';
+                lbl.textContent = item.label;
+                slot.appendChild(lbl);
+
+                slot.addEventListener('click', () => onInventoryClick(id));
+                slot.addEventListener('contextmenu', (e) => { e.preventDefault(); clearSelection(); });
+                slot.addEventListener('mouseenter', () => { engine.hoveredItem = id; updateSentenceBar(); });
+                slot.addEventListener('mouseleave', () => { engine.hoveredItem = null; updateSentenceBar(); });
+            }
+            grid.appendChild(slot);
+        }
+    }
+
+    // =========================================================================
+    // 11. MODALS (CARD, MAP, ACT COMPLETE, EXPORT)
+    // =========================================================================
+    const overlay = document.getElementById('modal-overlay');
+    const modalBox = document.getElementById('modal-content');
+
+    function escapeHtml(s) {
+        return String(s).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+    }
+
+    function showModal(html) {
+        modalBox.innerHTML = html;
+        overlay.style.display = 'flex';
+        engine.modalOpen = true;
+        engine.player.waypoints = [];
+        modalBox.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', closeModal));
+    }
+
+    function closeModal() {
+        overlay.style.display = 'none';
+        engine.modalOpen = false;
+    }
+
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); });
+
+    function showBirthdayCard() {
+        const paras = BIRTHDAY_CARD.paragraphs.map(p => `<p>${escapeHtml(p)}</p>`).join('');
+        const sign = escapeHtml(BIRTHDAY_CARD.signature).replace(/\n/g, '<br>');
+        showModal(`
+            <div class="bday-card">
+                <div class="bday-40">40</div>
+                <div class="bday-front">${escapeHtml(BIRTHDAY_CARD.front)}</div>
+                ${paras}
+                <p class="bday-sign">${sign}</p>
+            </div>
+            <div class="modal-btns"><button class="ed-btn primary" data-close>CLOSE CARD</button></div>
+        `);
+    }
+
+    function showMap() {
+        const img = mapImageSrc ? `<img src="${mapImageSrc}" alt="Old map">` : '';
+        showModal(`
+            <h2>THE OLD MAP</h2>
+            ${img}
+            <p>A dotted red route: New York and Boston, across the Atlantic to London and Amsterdam, then down through the Mediterranean to Haifa.</p>
+            <div class="modal-btns"><button class="ed-btn primary" data-close>FOLD IT UP</button></div>
+        `);
+    }
+
+    function showActComplete() {
+        showModal(`
+            <h2>ACT I COMPLETE: MA'AYAN BARUCH</h2>
+            <p>The basalt figure holds the ironstone high, the way Grandpa David always meant it to.</p>
+            <p>Deep inside the plinth, a hidden drawer has slid open. Inside: a photograph of a jazz club, an address in Amsterdam, and the old map's route, traced in Grandpa's hand.</p>
+            <p style="color:#facc15;">The journey continues in Act II.</p>
+            <div class="modal-btns"><button class="ed-btn primary" data-close>KEEP EXPLORING</button></div>
+        `);
+    }
+
+    // =========================================================================
+    // 12. UI BUTTONS, KEYBOARD & JSON EXPORT
+    // =========================================================================
+    document.querySelectorAll('.scumm-pill[data-room]').forEach(btn => {
+        btn.addEventListener('click', () => loadRoom(btn.getAttribute('data-room')));
+    });
+
+    document.querySelectorAll('.verb-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const verb = btn.getAttribute('data-verb');
+            engine.selectedVerb = (engine.selectedVerb === verb) ? null : verb;
+            // Only Use/Give keep a selected item
+            if (engine.selectedVerb !== 'Use' && engine.selectedVerb !== 'Give') engine.selectedItem = null;
+            document.querySelectorAll('.verb-btn').forEach(b => {
+                b.classList.toggle('active', b.getAttribute('data-verb') === engine.selectedVerb);
+            });
+            renderInventory();
+            updateSentenceBar();
+        });
+    });
+
+    const debugBtn = document.getElementById('btn-debug-physics');
+    function togglePhysicsDebug() {
+        engine.showPhysicsDebug = !engine.showPhysicsDebug;
+        debugBtn.classList.toggle('active', engine.showPhysicsDebug);
+    }
+    debugBtn.addEventListener('click', togglePhysicsDebug);
+
+    document.getElementById('btn-edit-mode').addEventListener('click', () => toggleEditMode());
+    document.getElementById('ed-done-btn').addEventListener('click', () => toggleEditMode(false));
+
+    document.getElementById('ed-delete-box').addEventListener('click', () => {
+        const room = getCurrentRoom();
+        if (!engine.editor.selectedColliderId) return;
+        room.colliders = room.colliders.filter(c => c.id !== engine.editor.selectedColliderId);
+        engine.editor.selectedColliderId = null;
+        updateEditorInspector();
+        say('Deleted selected collision box.');
+    });
+
+    document.getElementById('ed-depth-y').addEventListener('change', (e) => {
+        const col = getCurrentRoom().colliders.find(c => c.id === engine.editor.selectedColliderId);
+        if (col) col.depthY = parseInt(e.target.value, 10) || (col.y + col.h);
+    });
+
+    document.getElementById('ed-edit-walkbounds').addEventListener('click', () => {
+        const room = getCurrentRoom();
+        const presets = [220, 245, 255, 265, 285];
+        const nextIdx = (presets.indexOf(room.walkBounds.minY) + 1) % presets.length;
+        room.walkBounds.minY = presets[nextIdx];
+        room.perspective.minY = presets[nextIdx];
+        updateEditorInspector();
+        say(`Walkable floor horizon is now Y = ${room.walkBounds.minY}`);
+    });
+
+    const bgFileInput = document.getElementById('file-bg-input');
+    document.getElementById('btn-load-bg').addEventListener('click', () => bgFileInput.click());
+    bgFileInput.addEventListener('change', (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            const img = new Image();
+            img.onload = () => {
+                loadedBackgrounds[engine.currentRoomId] = img;
+                say(`Loaded background "${file.name}".`);
+            };
+            img.src = ev.target.result;
+        };
+        reader.readAsDataURL(file);
+    });
+
+    const spriteFileInput = document.getElementById('file-sprite-input');
+    document.getElementById('btn-load-sprites').addEventListener('click', () => spriteFileInput.click());
+    spriteFileInput.addEventListener('change', (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            const img = new Image();
+            img.onload = () => {
+                processChromaKeySpriteSheet(img);
+                say(`Loaded sprite sheet "${file.name}".`);
+            };
+            img.src = ev.target.result;
+        };
+        reader.readAsDataURL(file);
+    });
+
+    document.getElementById('btn-export-json').addEventListener('click', () => {
+        const room = getCurrentRoom();
+        const exportObj = {
+            id: room.id,
+            title: room.title,
+            spawn: room.spawn,
+            perspective: room.perspective,
+            walkBounds: room.walkBounds,
+            colliders: room.colliders,
+            exits: room.exits
+        };
+        showModal(`
+            <h2>EXPORT ROOM PHYSICS &amp; COLLIDER CONFIG</h2>
+            <p>Copy this JSON into <code>ROOMS.${room.id}</code> in <code>index.html</code> to keep your collision boxes and walkable bounds:</p>
+            <textarea id="export-textarea" readonly>${escapeHtml(JSON.stringify(exportObj, null, 2))}</textarea>
+            <div class="modal-btns">
+                <button class="ed-btn primary" id="copy-json-btn">COPY TO CLIPBOARD</button>
+                <button class="ed-btn" data-close>CLOSE</button>
+            </div>
+        `);
+        document.getElementById('copy-json-btn').onclick = () => {
+            const ta = document.getElementById('export-textarea');
+            const text = ta.value;
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(() => say('Copied room JSON to clipboard!'));
+            } else {
+                ta.select();
+                document.execCommand('copy');
+                say('Copied room JSON to clipboard!');
+            }
+        };
+    });
+
+    function isTypingTarget(el) {
+        return el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA');
+    }
+
+    window.addEventListener('keydown', (e) => {
+        if (isTypingTarget(document.activeElement)) return;
+
+        if (e.code === 'Escape') {
+            if (engine.modalOpen) closeModal();
+            else clearSelection();
+            return;
+        }
+        if (engine.modalOpen) return;
+
+        if (e.code.startsWith('Arrow')) e.preventDefault();
+        engine.keysDown[e.code] = true;
+
+        if (e.code === 'KeyE' && !e.repeat) {
+            toggleEditMode();
+        } else if (e.code === 'KeyP' && !e.repeat) {
+            togglePhysicsDebug();
+        } else if (e.code === 'Period') {
+            engine.dialogueTimer = 0; // skip current line
+        } else if ((e.code === 'Backspace' || e.code === 'Delete') && engine.editMode && engine.editor.selectedColliderId) {
+            document.getElementById('ed-delete-box').click();
+        }
+    });
+
+    window.addEventListener('keyup', (e) => {
+        engine.keysDown[e.code] = false;
+    });
+
+    window.addEventListener('blur', () => { engine.keysDown = {}; });
+
+    // =========================================================================
+    // 13. MAIN LOOP
+    // =========================================================================
+    let lastTime = 0;
+    function gameLoop(timestamp) {
+        const dt = Math.min(0.05, Math.max(0, (timestamp - lastTime) / 1000));
+        lastTime = timestamp;
+        updateEngine(dt);
+        renderScene(timestamp / 1000);
+        requestAnimationFrame(gameLoop);
+    }
+
+    function init() {
+        preloadDefaultAssets();
+        renderInventory();
+        updateSentenceBar();
+        engine.banner = { text: getCurrentRoom().title, timer: 3 };
+        say("Grandpa's courtyard. I should read that birthday card again.");
+        requestAnimationFrame(gameLoop);
+    }
+
+    // Debug/testing handle (handy in the browser console)
+    window.fineLegacy = { engine, flags, ROOMS, loadRoom, addItem, step: updateEngine, render: renderScene };
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
+})();
+</script>
+</body>
+</html>
