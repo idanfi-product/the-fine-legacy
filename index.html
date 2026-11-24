@@ -225,6 +225,32 @@
             text-shadow: 0 0 8px rgba(74, 222, 128, 0.75);
         }
 
+        #dialogue-choices {
+            position: absolute;
+            inset: 0;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            gap: 2px;
+            padding: 6px 14px;
+            background: #000000;
+            border: 1px solid #27272a;
+            border-radius: 4px;
+            z-index: 20;
+        }
+        .choice-btn {
+            background: transparent;
+            border: none;
+            color: #a78bfa;
+            font-family: inherit;
+            font-weight: bold;
+            font-size: clamp(12px, 1.45vw, 17px);
+            text-align: left;
+            cursor: pointer;
+            padding: 3px 4px;
+        }
+        .choice-btn:hover { color: #facc15; background: rgba(250, 204, 21, 0.08); }
+
         #inventory-grid {
             flex: 1;
             display: grid;
@@ -345,9 +371,12 @@
         <div class="top-controls">
             <button class="scumm-pill active" data-room="yard">1A: COURTYARD</button>
             <button class="scumm-pill" data-room="studio">1B: STUDIO</button>
+            <button class="scumm-pill" data-room="club">2A: JAZZ CLUB</button>
+            <button class="scumm-pill" data-room="library">2B: LIBRARY</button>
             <button class="scumm-pill" id="btn-load-bg">LOAD BG IMAGE</button>
             <button class="scumm-pill" id="btn-load-sprites">LOAD SPRITES</button>
             <button class="scumm-pill" id="btn-debug-physics">[P] PHYSICS BOXES</button>
+            <button class="scumm-pill" id="btn-voice">[V] VOICE</button>
             <button class="scumm-pill" id="btn-edit-mode">[E] EDIT MODE</button>
             <button class="scumm-pill" id="btn-export-json">EXPORT ROOM JSON</button>
         </div>
@@ -392,6 +421,7 @@
             <button class="verb-btn" data-verb="Pull">Pull</button>
         </div>
         <div id="inventory-grid"></div>
+        <div id="dialogue-choices"></div>
     </footer>
 
     <div id="modal-overlay">
@@ -414,6 +444,8 @@
         yard:    [...withExts('assets/courtyard'), 'assets/cb11c396.jpeg', 'assets/watermarked_img_15033796555511362109.jpg'],
         studio:  [...withExts('assets/studio'), 'assets/e7ee95ef.jpeg', 'assets/watermarked_img_452717689913521399.jpg'],
         sprites: [...withExts('assets/sprites'), 'assets/b8517d95.jpeg', 'assets/watermarked_img_17393723907537096894.jpg'],
+        club:    [...withExts('assets/jazz-club')],
+        library: [...withExts('assets/library')],
         map:     [...withExts('assets/map')],
         hero:    ['assets/hero.png']
     };
@@ -438,7 +470,16 @@
         hoistUnlocked: false,   // Courtyard: hoist control box unlocked with the key
         slabLifted: false,      // Courtyard: hoist lifted the iron slab off the crate
         crateOpened: false,     // Courtyard: 1948 crate opened, ironstone + map found
-        ironstonePlaced: false  // Studio: ironstone placed in the basalt figure's hands
+        ironstonePlaced: false, // Studio: ironstone placed in the basalt figure's hands
+
+        // ACT II: THE NEW WORLD
+        act2Started: false,     // Act I finished, the journey has begun
+        photoShown: false,      // Club: showed Sal the photo, got a jukebox token
+        songPlayed: false,      // Club: played Lou's song (B7) on the jukebox
+        bostonUnlocked: false,  // Club: Sal handed over Lou's envelope
+        owlKeyTurned: false,    // Library: brass key turned in the owl case
+        wheelHeading: 'S',      // Library: ship's wheel heading (N/E/S/W)
+        sketchbookFound: false  // Library: owl case opened, sketchbook taken
     };
 
     const ITEMS = {
@@ -484,8 +525,86 @@
             icon: 'map',
             verbs: {
                 'Look at': "A worn map with a dotted red route: New York and Boston, across to London and Amsterdam, then down to Haifa.",
-                'Open': () => { showMap(); }
+                'Open': () => { showMap(); },
+                'Use': () => { showMap(); }
             }
+        },
+
+        // ---- ACT II ----
+        clubPhoto: {
+            label: 'Photo',
+            name: 'Jazz Club Photo',
+            icon: 'photo',
+            verbs: {
+                'Look at': "Grandpa David at a crowded jazz club, next to a big man with a double bass. On the back, in pencil: 'The Iron Lily, New York, 1952. Lou played B7 for me. The saddest, finest tune I ever heard. D.'",
+                'Open': "It's a photograph. The back is more interesting than you'd think: 'Lou played B7 for me.'"
+            }
+        },
+        amsterdamAddress: {
+            label: 'Address',
+            name: 'Amsterdam Address',
+            icon: 'note',
+            verbs: {
+                'Look at': "A scrap of paper in Grandpa's hand: 'Mevr. Brouwer - Clocks & Stones - Herengracht, Amsterdam.' That's a long way from here. Later.",
+                'Open': "It's just one line. Herengracht, Amsterdam. I'll get there."
+            }
+        },
+        jukeboxToken: {
+            label: 'Token',
+            name: 'Jukebox Token',
+            icon: 'token',
+            verbs: {
+                'Look at': "A brass token stamped 'IRON LILY - ONE PLAY'."
+            }
+        },
+        louEnvelope: {
+            label: 'Envelope',
+            name: "Lou's Envelope",
+            icon: 'envelope',
+            verbs: {
+                'Look at': "A yellowed envelope. On the front, in big loopy letters: 'For the family of David Fine. Play it slow.'",
+                'Open': () => openLouEnvelope()
+            }
+        },
+        louLetter: {
+            label: 'Letter',
+            name: "Lou's Letter",
+            icon: 'letter',
+            verbs: {
+                'Look at': "Lou Hartley's letter. Ada Whitcombe, Beacon Hill, Boston.",
+                'Open': () => { showLouLetter(); }
+            }
+        },
+        brassKey: {
+            label: 'Brass Key',
+            name: 'Small Brass Key',
+            icon: 'brasskey',
+            verbs: {
+                'Look at': "A small brass key with a tiny owl stamped on the bow."
+            }
+        },
+        sketchbook: {
+            label: 'Sketchbook',
+            name: "Grandpa's Sketchbook",
+            icon: 'book',
+            verbs: {
+                'Look at': "A leather sketchbook, soft as a glove. 'D. FINE - NEW WORLD - 1952' is pressed into the cover.",
+                'Open': () => { showSketchbook(); }
+            }
+        }
+    };
+
+    // Who can speak, where their words appear, and how they sound.
+    // x/y: the point just above their head on screen. voice.names: preferred
+    // system voices in order (the first one installed wins).
+    const SPEAKERS = {
+        sal: {
+            name: 'Sal', x: 456, y: 132, color: '#93c5fd',
+            voice: { names: ['Reed (English (US))', 'Eddy (English (US))', 'Daniel', 'Aaron', 'Alex', 'Google US English'], pitch: 0.8, rate: 0.95 }
+        },
+        regular: {
+            name: 'The Regular', x: 446, y: 156, color: '#fca5a5',
+            voice: { names: ['Rocko (English (US))', 'Eddy (English (US))', 'Daniel', 'Reed (English (US))'], pitch: 0.65, rate: 0.9 }
         }
     };
 
@@ -690,6 +809,296 @@
                     targetSpawn: { x: 382, y: 275, facing: 1 }
                 }
             ]
+        },
+
+        // =====================================================================
+        // ACT II: THE NEW WORLD
+        // =====================================================================
+        club: {
+            id: 'club',
+            title: 'New York - The Iron Lily Jazz Club',
+            spawn: { x: 330, y: 296, facing: 1 },
+            perspective: { minY: 262, maxY: 340, minScale: 0.96, maxScale: 1.1 },
+            walkBounds: { minX: 168, maxX: 566, minY: 262, maxY: 340 },
+            fx: {
+                jukeboxGlow: { x: 600, y: 230 }
+            },
+            colliders: [
+                { id: 'front_center_table', label: 'Front Tables', x: 228, y: 318, w: 186, h: 30, blocksWalk: true, depthY: 346, propType: 'none' },
+                { id: 'front_right_table', label: 'Right Table', x: 452, y: 320, w: 84, h: 26, blocksWalk: true, depthY: 346, propType: 'none' },
+                { id: 'bar_foot', label: 'Bar Counter', x: 486, y: 262, w: 80, h: 14, blocksWalk: true, depthY: 276, propType: 'none' }
+            ],
+            hotspots: [
+                {
+                    id: 'bartender',
+                    name: 'Sal the Bartender',
+                    x: 438, y: 126, w: 42, h: 64,
+                    walkTo: { x: 476, y: 290 },
+                    defaultVerb: 'Talk to',
+                    verbs: {
+                        'Look at': "An old bartender polishing the same glass he's probably been polishing since 1960. His apron says SAL.",
+                        'Talk to': () => talkToSal(),
+                        'Pick up': "Sal looks like he's been picked up and put down by this city plenty already."
+                    },
+                    onItem: {
+                        clubPhoto: () => showPhotoToSal(),
+                        jukeboxToken: () => { sayLines([['sal', "That's for the jukebox, friend. Not for me."]]); },
+                        louEnvelope: () => { sayLines([['sal', "That's yours now. Lou would want you to open it."]]); },
+                        louLetter: () => { sayLines([['sal', "I don't read other people's mail. Even Lou's."]]); },
+                        amsterdamAddress: () => { sayLines([['sal', 'Amsterdam? Kid, I have never been further than Hoboken.']]); }
+                    }
+                },
+                {
+                    id: 'regular',
+                    name: 'The Regular',
+                    x: 414, y: 156, w: 58, h: 132,
+                    walkTo: { x: 392, y: 296 },
+                    defaultVerb: 'Talk to',
+                    verbs: {
+                        'Look at': "A man in a trenchcoat and a hat, leaning on the bar like it owes him money.",
+                        'Talk to': () => talkToRegular()
+                    },
+                    onItem: {
+                        clubPhoto: () => { sayLines([['regular', "Before my time. But Sal? Sal was here when the bricks were laid. Show him."]]); }
+                    }
+                },
+                {
+                    id: 'jukebox',
+                    name: 'Jukebox',
+                    x: 572, y: 172, w: 58, h: 116,
+                    walkTo: { x: 548, y: 300 },
+                    defaultVerb: 'Use',
+                    verbs: {
+                        'Look at': () => 'A glowing jukebox, all chrome and coloured glass. The card lists A1 to B7. B7 is handwritten: "Song for the Stone Man - L. Hartley Quintet".',
+                        'Use': () => useJukebox(),
+                        'Push': 'I give it a friendly thump. It hums back. Nothing plays.',
+                        'Pick up': "It's bolted to the floor, and anyway Sal is watching me."
+                    },
+                    onItem: {
+                        jukeboxToken: () => useJukebox(true)
+                    }
+                },
+                {
+                    id: 'doubleBass',
+                    name: 'Double Bass',
+                    x: 30, y: 116, w: 150, h: 138,
+                    walkTo: { x: 196, y: 274 },
+                    defaultVerb: 'Look at',
+                    verbs: {
+                        'Look at': "An old double bass resting on the stage. A brass plate on the neck reads 'L.H.' Nobody has tuned it in a long time.",
+                        'Pick up': "That's Lou's. Sal would throw me out, and he'd be right.",
+                        'Use': "I pluck one string. BWOOOM. Half the room turns around."
+                    }
+                },
+                {
+                    id: 'piano',
+                    name: 'Upright Piano',
+                    x: 150, y: 146, w: 80, h: 58,
+                    walkTo: { x: 222, y: 270 },
+                    defaultVerb: 'Look at',
+                    verbs: {
+                        'Look at': 'An upright piano with a cigarette burn on every other key.',
+                        'Use': 'I play the only thing I know: chopsticks. Somebody at the back politely coughs.'
+                    }
+                },
+                {
+                    id: 'posters',
+                    name: 'Old Posters',
+                    x: 40, y: 84, w: 82, h: 76,
+                    walkTo: { x: 186, y: 270 },
+                    defaultVerb: 'Look at',
+                    verbs: {
+                        'Look at': "Faded gig posters. One reads: 'TONIGHT - LOU HARTLEY QUINTET - THE IRON LILY - 1952'.",
+                        'Pick up': "They're glued to the wall by 70 years of smoke."
+                    }
+                },
+                {
+                    id: 'cardPlayers',
+                    name: 'Card Players',
+                    x: 252, y: 196, w: 108, h: 80,
+                    walkTo: { x: 306, y: 286 },
+                    defaultVerb: 'Look at',
+                    verbs: {
+                        'Look at': "Three people playing cards. Nobody seems to be winning, and nobody seems to mind.",
+                        'Talk to': "\"Deal me in?\" They look at me, look at each other, and keep playing."
+                    }
+                },
+                {
+                    id: 'backDoor',
+                    name: 'Back Door',
+                    x: 296, y: 120, w: 44, h: 70,
+                    walkTo: { x: 318, y: 272 },
+                    defaultVerb: 'Open',
+                    verbs: {
+                        'Look at': "A dark doorway at the back. Out to the street, and wherever the map says next.",
+                        'Open': () => { showMap(); },
+                        'Use': () => { showMap(); }
+                    }
+                }
+            ],
+            exits: []
+        },
+
+        library: {
+            id: 'library',
+            title: 'Boston - The Whitcombe Library, Beacon Hill',
+            spawn: { x: 300, y: 322, facing: 1 },
+            perspective: { minY: 272, maxY: 352, minScale: 0.98, maxScale: 1.12 },
+            walkBounds: { minX: 66, maxX: 596, minY: 272, maxY: 352 },
+            fx: {
+                owlCase: { x: 262, y: 220 },
+                wheel: { x: 204, y: 86 }
+            },
+            colliders: [
+                { id: 'big_globe', label: 'Big Floor Globe', x: 0, y: 290, w: 64, h: 70, blocksWalk: true, depthY: 352, propType: 'none' },
+                { id: 'ladder_foot', label: 'Library Ladder', x: 84, y: 272, w: 72, h: 26, blocksWalk: true, depthY: 296, propType: 'none' },
+                { id: 'globe_stand', label: 'Globe Stand', x: 208, y: 272, w: 44, h: 12, blocksWalk: true, depthY: 282, propType: 'none' },
+                { id: 'owl_case', label: 'Owl Display Case', x: 238, y: 266, w: 52, h: 12, blocksWalk: true, depthY: 276, propType: 'none' },
+                { id: 'book_stack', label: 'Book Stacks', x: 330, y: 272, w: 52, h: 46, blocksWalk: true, depthY: 314, propType: 'none' },
+                { id: 'desk', label: "Ada's Desk", x: 350, y: 272, w: 206, h: 34, blocksWalk: true, depthY: 304, propType: 'none' },
+                { id: 'telescope', label: 'Telescope', x: 560, y: 276, w: 48, h: 14, blocksWalk: true, depthY: 288, propType: 'none' },
+                { id: 'front_books', label: 'Books on the Floor', x: 160, y: 318, w: 104, h: 42, blocksWalk: true, depthY: 352, propType: 'none' }
+            ],
+            hotspots: [
+                {
+                    id: 'owlCase',
+                    name: 'Owl Display Case',
+                    x: 236, y: 176, w: 56, h: 96,
+                    walkTo: { x: 270, y: 296 },
+                    defaultVerb: 'Look at',
+                    verbs: {
+                        'Look at': () => flags.sketchbookFound
+                            ? 'The glass case stands open. The stone owl looks a little lighter without a sketchbook in its belly.'
+                            : 'A glass case with a carved stone owl inside. A brass plate on the base has a small keyhole, and a thin cable runs from the case up toward the balcony.',
+                        'Open': () => openOwlCase(),
+                        'Use': () => openOwlCase(),
+                        'Pick up': "The whole case? I'd need Grandpa's crane.",
+                        'Talk to': 'Who? Who opens you? ...The owl does not answer.'
+                    },
+                    onItem: {
+                        brassKey: () => turnOwlKey(),
+                        louLetter: "I hold Lou's letter up to the glass. The owl is unimpressed."
+                    }
+                },
+                {
+                    id: 'shipsWheel',
+                    name: "Ship's Wheel",
+                    x: 178, y: 48, w: 58, h: 78,
+                    walkTo: { x: 334, y: 284 },
+                    defaultVerb: 'Look at',
+                    verbs: {
+                        'Look at': () => `A ship's wheel mounted on the balcony rail, with a brass compass rose behind it. The pointer is on ${headingName(flags.wheelHeading)}. A thin cable runs from its hub down toward the owl case.`,
+                        'Use': () => turnWheel(),
+                        'Push': () => turnWheel(),
+                        'Pull': () => turnWheel(),
+                        'Pick up': "It's bolted to the balcony. Ships' wheels usually are."
+                    }
+                },
+                {
+                    id: 'typewriter',
+                    name: 'Typewriter',
+                    x: 492, y: 216, w: 46, h: 28,
+                    walkTo: { x: 512, y: 318 },
+                    defaultVerb: 'Look at',
+                    verbs: {
+                        'Look at': "A sheet is still in the typewriter: 'FOR DAVID'S FAMILY. THE OWL KEEPS HIS BOOK. LOU HAS THE KEY. AND THE SHIP MUST POINT THE WAY DAVID SAILED HOME. - A.W.'",
+                        'Use': "I type 'HELLO'. The keys clack like old teeth. I'd better not ruin Ada's note.",
+                        'Pick up': "I'll leave Ada's note where she left it."
+                    }
+                },
+                {
+                    id: 'globe',
+                    name: 'Globe',
+                    x: 206, y: 212, w: 46, h: 62,
+                    walkTo: { x: 226, y: 296 },
+                    defaultVerb: 'Look at',
+                    verbs: {
+                        'Look at': "A brass-ringed globe. Red pins mark Boston, London, Amsterdam and Haifa, joined by a red thread. From Boston, the thread heads due EAST across the Atlantic.",
+                        'Use': 'I give it a spin. The world goes round, and lands on Boston again.',
+                        'Push': 'I give it a spin. The world goes round, and lands on Boston again.'
+                    }
+                },
+                {
+                    id: 'adaDesk',
+                    name: "Ada's Desk",
+                    x: 350, y: 236, w: 140, h: 66,
+                    walkTo: { x: 430, y: 318 },
+                    defaultVerb: 'Look at',
+                    verbs: {
+                        'Look at': "A big oak desk under a green lamp. Open ledgers, loose letters, and a teacup ring that's older than me.",
+                        'Open': 'The drawers hold ink, string, and about four hundred paperclips. No sketchbook.',
+                        'Pick up': "It's an oak desk. It'll be here long after me."
+                    }
+                },
+                {
+                    id: 'telescopeSpot',
+                    name: 'Telescope',
+                    x: 560, y: 204, w: 52, h: 86,
+                    walkTo: { x: 560, y: 306 },
+                    defaultVerb: 'Look at',
+                    verbs: {
+                        'Look at': 'A brass telescope on a tripod, pointed straight at a window across the street. Rude.',
+                        'Use': "I look through it. Across the street, someone is also looking through a telescope. At me. I stop."
+                    }
+                },
+                {
+                    id: 'spiralStairs',
+                    name: 'Spiral Stairs',
+                    x: 316, y: 64, w: 62, h: 214,
+                    walkTo: { x: 334, y: 284 },
+                    defaultVerb: 'Look at',
+                    verbs: {
+                        'Look at': "Iron spiral stairs up to the balcony, where the ship's wheel is.",
+                        'Use': "I climb up, admire the view, and climb back down. Very good for the knees."
+                    }
+                },
+                {
+                    id: 'ladder',
+                    name: 'Library Ladder',
+                    x: 84, y: 120, w: 70, h: 178,
+                    walkTo: { x: 170, y: 300 },
+                    defaultVerb: 'Look at',
+                    verbs: {
+                        'Look at': 'A rolling ladder for the top shelves. Somebody has tied a little bell to the top rung.',
+                        'Use': 'I climb two rungs, the bell rings, and I feel like I am being told off. I climb down.',
+                        'Push': 'It rolls a metre along its rail and squeaks like a sad mouse.'
+                    }
+                },
+                {
+                    id: 'windows',
+                    name: 'Tall Windows',
+                    x: 380, y: 30, w: 250, h: 170,
+                    walkTo: { x: 470, y: 318 },
+                    defaultVerb: 'Look at',
+                    verbs: {
+                        'Look at': "Rain on Beacon Hill. Gas lamps, brick houses and red leaves sticking to the glass.",
+                        'Open': "It's pouring out there. I'll keep the rain on the outside."
+                    }
+                },
+                {
+                    id: 'wallMap',
+                    name: 'Framed Map',
+                    x: 328, y: 36, w: 48, h: 32,
+                    walkTo: { x: 350, y: 318 },
+                    defaultVerb: 'Look at',
+                    verbs: {
+                        'Look at': 'An old chart of the North Atlantic. Someone pencilled a tiny ship halfway between Boston and London.'
+                    }
+                },
+                {
+                    id: 'libraryExit',
+                    name: 'Way Out to Beacon Hill',
+                    x: 0, y: 200, w: 40, h: 88,
+                    walkTo: { x: 76, y: 320 },
+                    defaultVerb: 'Open',
+                    verbs: {
+                        'Look at': "The way out to Beacon Hill, and wherever the map says next.",
+                        'Open': () => { showMap(); },
+                        'Use': () => { showMap(); }
+                    }
+                }
+            ],
+            exits: []
         }
     };
 
@@ -726,6 +1135,182 @@
         removeItem('ironstone');
         setTimeout(showActComplete, 2600);
         return 'I lift the ironstone into the figure\'s raised hands. It fits perfectly, like it was carved for it. Something clicks deep inside the stone...';
+    }
+
+    // =========================================================================
+    // 3b. PUZZLE ACTIONS (ACT II: THE NEW WORLD)
+    // =========================================================================
+    const HEADINGS = ['N', 'E', 'S', 'W'];
+    function headingName(h) {
+        return { N: 'NORTH', E: 'EAST', S: 'SOUTH', W: 'WEST' }[h];
+    }
+
+    function startAct2() {
+        if (!flags.act2Started) {
+            flags.act2Started = true;
+            flags.ironstonePlaced = true;
+            ['clubPhoto', 'amsterdamAddress', 'oldMap'].forEach(id => { if (!engine.inventory.includes(id)) addItem(id); });
+            ['ironstone', 'hoistKey'].forEach(id => removeItem(id));
+        }
+        closeModal();
+        loadRoom('club');
+        engine.banner = { text: 'ACT II: THE NEW WORLD', timer: 3.5 };
+        sayLines([[null, "New York. The address on the back of Grandpa's photo. The Iron Lily is still here, and it looks like nobody told it the 1950s ended."]]);
+    }
+
+    // --- Sal, the bartender ---
+    function talkToSal() {
+        if (flags.songPlayed && !flags.bostonUnlocked) { giveEnvelope(); return; }
+        const greeting = flags.bostonUnlocked
+            ? 'Back again? Lou would have liked you. Whatever you find in Boston, you tell me about it.'
+            : flags.photoShown
+                ? "Found Lou's song yet? The jukebox is right there."
+                : 'Welcome to the Iron Lily. What can I get you?';
+        sayLines([['sal', greeting]], salMenu);
+    }
+
+    function salMenu() {
+        const opts = [
+            { text: 'What is this place?', pick: () => sayLines([
+                ['sal', "The Iron Lily. Lou Hartley opened her in '49. Lou's gone now, but I keep her the way he liked. Same chairs. Same smoke."]
+            ], salMenu) },
+            { text: "I'm tracing my grandfather, David Fine.", pick: () => sayLines(
+                flags.bostonUnlocked
+                    ? [['sal', "Lou's sculptor. Read the letter, friend. It's all in there."]]
+                    : flags.photoShown
+                        ? [['sal', "And I've got his envelope right here. Play me Lou's song and it's yours. Those were Lou's rules."]]
+                        : [['sal', "Fine... Fine. Rings a bell, but my memory's like the house whiskey. Watered down."], ['sal', 'You got a picture or something?']]
+            , salMenu) }
+        ];
+        if (flags.photoShown && !flags.songPlayed) {
+            opts.push({ text: 'Which song was Lou\'s?', pick: () => sayLines([
+                ['sal', 'Lou wrote a hundred songs and I could never keep them straight. Your grandpa would have known which one.'],
+                [null, "Grandpa would have known... Maybe he wrote it down somewhere."]
+            ], salMenu) });
+        }
+        opts.push({ text: 'Never mind.', pick: () => sayLines([['sal', "I'll be here. I'm always here."]]) });
+        showChoices(opts);
+    }
+
+    function showPhotoToSal() {
+        if (flags.photoShown) {
+            sayLines([['sal', "I've seen it, friend. Lou and the sculptor. Now go find me that song."]]);
+            return;
+        }
+        flags.photoShown = true;
+        sayLines([
+            [null, 'Do you know the people in this photo?'],
+            ['sal', "Well, I'll be. That's Lou on the bass... and that's the sculptor! The quiet South African who drew on all my napkins."],
+            ['sal', "Lou left an envelope for that man's family. Made me swear on this bar I'd only give it to someone who'd heard his song."],
+            ['sal', "Trouble is, I can't remember which song. Here. The jukebox is on the house."]
+        ], () => { addItem('jukeboxToken'); say('Sal slides a brass jukebox token across the bar.'); });
+    }
+
+    function talkToRegular() {
+        sayLines([['regular', "Nice night for it."]], () => showChoices([
+            { text: 'Have you been coming here long?', pick: () => sayLines([
+                ['regular', 'Thirty years. Sal still waters the whiskey. I still drink it. That is loyalty.']
+            ], talkToRegular) },
+            { text: 'Did you know Lou Hartley?', pick: () => sayLines([
+                ['regular', 'Before my time. But Sal? Sal was here when they laid the bricks. Sal never forgets a face.'],
+                ['regular', "Show him one."]
+            ], talkToRegular) },
+            { text: 'Enjoy your drink.', pick: () => sayLines([['regular', 'Always do.']]) }
+        ]));
+    }
+
+    // --- The jukebox ---
+    const JUKEBOX_SONGS = [
+        { id: 'A1', title: 'Harlem Rain' },
+        { id: 'A4', title: 'Lenox Avenue Shuffle' },
+        { id: 'B2', title: 'Brass Taxi' },
+        { id: 'B7', title: 'Song for the Stone Man' }
+    ];
+
+    function useJukebox(withToken = false) {
+        if (!engine.inventory.includes('jukeboxToken')) {
+            return flags.songPlayed
+                ? 'I already played the song that mattered. I want to remember it just like that.'
+                : "It needs a token. Sal behind the bar probably has some.";
+        }
+        if (!withToken && !engine.inventory.includes('jukeboxToken')) return 'It needs a token.';
+        say('I drop the token in. Which record?');
+        showChoices([
+            ...JUKEBOX_SONGS.map(song => ({ text: `${song.id}  ${song.title}`, pick: () => playJukeboxSong(song) })),
+            { text: 'Not now.', pick: () => say('I fish the token back out of the coin return.') }
+        ]);
+    }
+
+    function playJukeboxSong(song) {
+        const seconds = playTune(song.id);
+        const right = song.id === 'B7';
+        if (right) removeItem('jukeboxToken');
+        sayLines([[null, `The arm swings across and drops the needle... ${song.title}.`]]);
+        setTimeout(() => {
+            if (right) {
+                flags.songPlayed = true;
+                sayLines([
+                    ['sal', "...That's it. That's the one. 'Song for the Stone Man.' Lou wrote it for your grandfather."],
+                    ['sal', 'Come here. A promise is a promise.']
+                ], giveEnvelope);
+            } else {
+                sayLines([
+                    ['sal', 'Nice tune. Not the one, though.'],
+                    [null, 'The token rattles back out of the coin return. Lou must have rigged it.']
+                ]);
+            }
+        }, Math.min(seconds, 5.5) * 1000);
+    }
+
+    function giveEnvelope() {
+        sayLines([
+            ['sal', "Here. Lou's envelope. Kept it under the till for thirty-odd years."],
+            ['sal', "Whatever's in there, it's for you, not me."]
+        ], () => {
+            flags.bostonUnlocked = true;
+            addItem('louEnvelope');
+            say("Lou's envelope. Something small and hard is rattling around inside.");
+        });
+    }
+
+    function openLouEnvelope() {
+        removeItem('louEnvelope');
+        addItem('louLetter');
+        addItem('brassKey');
+        showLouLetter();
+    }
+
+    // --- The library ---
+    function turnWheel() {
+        if (flags.sketchbookFound) return "The ship already took me where I needed to go.";
+        const i = HEADINGS.indexOf(flags.wheelHeading);
+        flags.wheelHeading = HEADINGS[(i + 1) % 4];
+        const h = headingName(flags.wheelHeading);
+        if (flags.wheelHeading === 'E') {
+            return flags.owlKeyTurned
+                ? `I climb up and turn the wheel. The pointer swings to ${h}... CLUNK! Down below, the owl case's latch springs free!`
+                : `I climb up and turn the wheel. The pointer swings to ${h}... CLUNK! Something moves down in the owl case. But its keyhole is still locked.`;
+        }
+        return `I climb up and turn the wheel. It creaks round, and the pointer settles on ${h}.`;
+    }
+
+    function turnOwlKey() {
+        if (flags.owlKeyTurned) return "It's already turned.";
+        flags.owlKeyTurned = true;
+        removeItem('brassKey');
+        return flags.wheelHeading === 'E'
+            ? 'The little brass key turns with a sweet click. With the ship already pointing east, the case is free to open!'
+            : "The little brass key turns with a sweet click... but the case is still held shut. Something on that cable is still holding it.";
+    }
+
+    function openOwlCase() {
+        if (flags.sketchbookFound) return 'Just a stone owl now, guarding nothing.';
+        if (!flags.owlKeyTurned && flags.wheelHeading !== 'E') return 'Locked. A small keyhole, and that cable running up to the balcony.';
+        if (!flags.owlKeyTurned) return 'The cable latch is loose now, but the keyhole is still locked.';
+        if (flags.wheelHeading !== 'E') return "The key's turned, but the cable is still holding the case shut. Something up on the balcony controls it.";
+        flags.sketchbookFound = true;
+        addItem('sketchbook');
+        return "The glass door swings open. The stone owl's base is hollow, and inside, wrapped in oilcloth: a leather sketchbook. 'D. FINE - NEW WORLD - 1952'.";
     }
 
     // =========================================================================
@@ -841,6 +1426,9 @@
         inventory: ['satchel', 'birthdayCard'],
         dialogueText: '',
         dialogueTimer: 0,
+        dialogueSpeaker: null, // null = the player, else a key of SPEAKERS
+        lineQueue: [],         // queued [speaker, text] lines
+        afterLines: null,      // runs once the queue finishes
         banner: { text: '', timer: 0 },
 
         // x, y = center-bottom of the character's feet
@@ -1126,7 +1714,22 @@
     }
 
     function updateEngine(dt) {
-        if (engine.dialogueTimer > 0) engine.dialogueTimer -= dt;
+        if (engine.dialogueTimer > 0) {
+            // Hold the line on screen while the voice is still talking (up to 20s).
+            if (voice.speaking && engine.dialogueTimer < 0.5) engine.dialogueTimer = 0.5;
+            engine.dialogueTimer -= dt;
+            if (voice.speaking && (engine.dialogueAge = (engine.dialogueAge || 0) + dt) > 20) stopVoice();
+        }
+        if (engine.dialogueTimer <= 0) {
+            if (engine.lineQueue.length) {
+                const [who, text] = engine.lineQueue.shift();
+                say(text, who);
+            } else if (engine.afterLines) {
+                const next = engine.afterLines;
+                engine.afterLines = null;
+                next();
+            }
+        }
         if (engine.banner.timer > 0) engine.banner.timer -= dt;
         if (engine.player.actionTimer > 0) engine.player.actionTimer -= dt;
 
@@ -1370,6 +1973,45 @@
                 ctx.fillRect(g.x - 1, g.y - 1, 2, 2);
             }
         }
+        if (room.id === 'club' && fx.jukeboxGlow) {
+            const playing = (engine.jukeboxUntil || 0) > performance.now();
+            const a = playing ? 0.25 + 0.2 * Math.sin(time * 9) : 0.08 + 0.05 * Math.sin(time * 2);
+            const g = ctx.createRadialGradient(fx.jukeboxGlow.x, fx.jukeboxGlow.y, 4, fx.jukeboxGlow.x, fx.jukeboxGlow.y, 70);
+            g.addColorStop(0, `rgba(250, 120, 220, ${a})`);
+            g.addColorStop(1, 'rgba(250, 120, 220, 0)');
+            ctx.fillStyle = g;
+            ctx.fillRect(fx.jukeboxGlow.x - 70, fx.jukeboxGlow.y - 70, 140, 140);
+            if (playing) {
+                ctx.fillStyle = `rgba(253, 230, 138, ${0.6 + 0.4 * Math.sin(time * 5)})`;
+                ctx.font = 'bold 12px serif';
+                const n = Math.floor(time * 2) % 2 ? '\u266A' : '\u266B';
+                ctx.fillText(n, fx.jukeboxGlow.x - 18 + Math.sin(time * 3) * 6, fx.jukeboxGlow.y - 66 - (time * 20) % 20);
+            }
+        }
+        if (room.id === 'library') {
+            if (fx.owlCase && flags.owlKeyTurned && flags.wheelHeading === 'E' && !flags.sketchbookFound) {
+                const a = 0.3 + 0.3 * Math.sin(time * 4);
+                ctx.strokeStyle = `rgba(253, 230, 138, ${a})`;
+                ctx.lineWidth = 2;
+                ctx.strokeRect(fx.owlCase.x - 24, fx.owlCase.y - 42, 48, 84);
+            }
+            if (fx.wheel) {
+                // brass compass pointer showing the wheel's heading
+                const ang = { N: -Math.PI / 2, E: 0, S: Math.PI / 2, W: Math.PI }[flags.wheelHeading];
+                const cx = fx.wheel.x, cy = fx.wheel.y;
+                ctx.strokeStyle = '#fde68a';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(cx, cy);
+                ctx.lineTo(cx + Math.cos(ang) * 14, cy + Math.sin(ang) * 14);
+                ctx.stroke();
+                ctx.fillStyle = '#fde68a';
+                ctx.font = 'bold 8px "Courier New", monospace';
+                ctx.textAlign = 'center';
+                ctx.fillText(flags.wheelHeading, cx + Math.cos(ang) * 22, cy + Math.sin(ang) * 22 + 3);
+                ctx.textAlign = 'left';
+            }
+        }
         if (room.id === 'yard') {
             if (fx.hoistLight) {
                 const on = Math.floor(time * 2) % 2 === 0;
@@ -1478,13 +2120,16 @@
         const lines = wrapText(engine.dialogueText, 300);
         const lineH = 14;
         const widest = Math.max(...lines.map(l => ctx.measureText(l).width));
-        const cx = Math.max(widest / 2 + 6, Math.min(640 - widest / 2 - 6, engine.player.x));
-        let top = headY - 8 - lines.length * lineH;
+        const spk = engine.dialogueSpeaker && SPEAKERS[engine.dialogueSpeaker];
+        const anchorX = spk ? spk.x : engine.player.x;
+        const anchorY = spk ? spk.y : headY;
+        const cx = Math.max(widest / 2 + 6, Math.min(640 - widest / 2 - 6, anchorX));
+        let top = anchorY - 8 - lines.length * lineH;
         top = Math.max(16, top);
 
         ctx.lineWidth = 3;
         ctx.strokeStyle = '#000';
-        ctx.fillStyle = '#fde68a';
+        ctx.fillStyle = spk ? spk.color : '#fde68a';
         lines.forEach((l, i) => {
             const ly = top + i * lineH;
             ctx.strokeText(l, cx, ly);
@@ -1759,6 +2404,7 @@
     // =========================================================================
     canvas.addEventListener('click', (e) => {
         if (engine.editMode || engine.modalOpen) return;
+        if (engine.choicesOpen) hideChoices();
         const pt = getCanvasLogicalPos(e);
         const spot = findHotspotAt(pt);
         const p = engine.player;
@@ -1874,9 +2520,164 @@
         renderInventory();
     }
 
-    function say(text) {
+    // Spoken dialogue via the browser's built-in speech synthesis.
+    // The line stays on screen until the voice finishes (or Period skips it).
+    const voice = {
+        supported: 'speechSynthesis' in window,
+        enabled: true,
+        chosen: null,
+        speaking: false,
+    };
+    try { if (localStorage.getItem('fineLegacy.voice') === 'off') voice.enabled = false; } catch (e) {}
+
+    // macOS ships joke voices (Bubbles, Cellos...) under English; never pick those.
+    const NOVELTY_VOICES = /bad news|bahh|bells|boing|bubbles|cellos|good news|jester|organ|superstar|trinoids|whisper|wobble|zarvox|albert|fred|junior|ralph|kathy|grandma|grandpa|rocko/i;
+
+    function pickVoice() {
+        if (!voice.supported) return;
+        const all = speechSynthesis.getVoices();
+        if (!all.length) return;
+        const prefs = ['en-ZA', 'en-GB', 'en-AU', 'en-US', 'en'];
+        const good = v => /natural|premium|enhanced|neural|google/i.test(v.name);
+        for (const lang of prefs) {
+            const matches = all.filter(v => v.lang.replace('_', '-').startsWith(lang) && !NOVELTY_VOICES.test(v.name));
+            if (matches.length) { voice.chosen = matches.find(good) || matches[0]; return; }
+        }
+        voice.chosen = all[0];
+    }
+    if (voice.supported) {
+        pickVoice();
+        speechSynthesis.addEventListener('voiceschanged', pickVoice);
+    }
+
+    function stopVoice() {
+        if (!voice.supported) return;
+        voice.speaking = false;
+        speechSynthesis.cancel();
+    }
+
+    function voiceForSpeaker(spk) {
+        if (!spk || !spk.voice) return voice.chosen;
+        const all = speechSynthesis.getVoices();
+        for (const name of spk.voice.names || []) {
+            const v = all.find(v => v.name === name || v.name.startsWith(name));
+            if (v) return v;
+        }
+        return voice.chosen;
+    }
+
+    function speak(text, speakerId = null) {
+        if (!voice.supported || !voice.enabled || engine.editMode) return;
+        stopVoice();
+        const spk = speakerId && SPEAKERS[speakerId];
+        const u = new SpeechSynthesisUtterance(text.replace(/\s*\n\s*/g, ' '));
+        const v = voiceForSpeaker(spk);
+        if (v) { u.voice = v; u.lang = v.lang; }
+        u.rate = (spk && spk.voice.rate) || 1.0;
+        u.pitch = (spk && spk.voice.pitch) || 1.0;
+        u.onend = u.onerror = () => {
+            if (voice.currentUtterance !== u) return;
+            voice.speaking = false;
+            engine.dialogueTimer = Math.min(engine.dialogueTimer, 0.6);
+        };
+        voice.currentUtterance = u;
+        voice.speaking = true;
+        speechSynthesis.speak(u);
+    }
+
+    function say(text, speakerId = null) {
         engine.dialogueText = text;
+        engine.dialogueSpeaker = speakerId;
+        engine.dialogueAge = 0;
         engine.dialogueTimer = Math.min(10, 2.5 + text.length * 0.055);
+        speak(text, speakerId);
+    }
+
+    // A short scene: lines play one after another, then `then` runs.
+    // Each line is [speakerId or null for the player, text].
+    function sayLines(lines, then = null) {
+        hideChoices();
+        engine.lineQueue = lines.slice(1);
+        engine.afterLines = then;
+        say(lines[0][1], lines[0][0]);
+    }
+
+    // Dialogue choices replace the verb panel until one is picked.
+    const choicesEl = document.getElementById('dialogue-choices');
+    function showChoices(options) {
+        choicesEl.innerHTML = '';
+        options.forEach((opt, i) => {
+            const b = document.createElement('button');
+            b.className = 'choice-btn';
+            b.textContent = `${i + 1}. ${opt.text}`;
+            b.addEventListener('click', () => {
+                hideChoices();
+                stopVoice();
+                engine.dialogueTimer = 0;
+                opt.pick();
+            });
+            choicesEl.appendChild(b);
+        });
+        choicesEl.style.display = 'flex';
+        engine.choicesOpen = options;
+    }
+    function hideChoices() {
+        choicesEl.style.display = 'none';
+        engine.choicesOpen = null;
+    }
+
+    // --- Jukebox music (synthesised, so there are no audio files to load) ---
+    let audioCtx = null;
+    const TUNES = {
+        // [midi note, beats]; 0 = rest
+        A1: { bpm: 120, wave: 'triangle', notes: [[67,1],[69,.5],[67,.5],[64,1],[62,1],[64,1],[67,1],[69,2]] },
+        A4: { bpm: 168, wave: 'square',   notes: [[60,.5],[64,.5],[67,.5],[70,.5],[69,.5],[67,.5],[64,.5],[60,.5],[62,1],[60,2]] },
+        B2: { bpm: 150, wave: 'sawtooth', notes: [[72,.5],[72,.5],[70,.5],[67,1],[0,.5],[65,.5],[67,1],[70,1],[72,2]] },
+        B7: { bpm: 72,  wave: 'triangle', notes: [[62,1],[65,1],[69,1.5],[67,.5],[65,1],[64,1],[62,2],[57,1],[60,1],[62,3]] }
+    };
+    function playTune(id) {
+        const tune = TUNES[id];
+        try {
+            audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+        } catch (e) { return 3; }
+        const beat = 60 / tune.bpm;
+        let t = audioCtx.currentTime + 0.4; // needle drop
+        // crackle
+        const noiseLen = Math.floor(audioCtx.sampleRate * 0.35);
+        const nb = audioCtx.createBuffer(1, noiseLen, audioCtx.sampleRate);
+        const nd = nb.getChannelData(0);
+        for (let i = 0; i < noiseLen; i++) nd[i] = (Math.random() * 2 - 1) * (Math.random() < 0.02 ? 0.6 : 0.04);
+        const ns = audioCtx.createBufferSource(); ns.buffer = nb;
+        const ng = audioCtx.createGain(); ng.gain.value = 0.5;
+        ns.connect(ng).connect(audioCtx.destination); ns.start(audioCtx.currentTime);
+        for (const [note, beats] of tune.notes) {
+            const dur = beats * beat;
+            if (note) {
+                const o = audioCtx.createOscillator();
+                const g = audioCtx.createGain();
+                o.type = tune.wave;
+                o.frequency.value = 440 * Math.pow(2, (note - 69) / 12);
+                g.gain.setValueAtTime(0, t);
+                g.gain.linearRampToValueAtTime(0.09, t + 0.03);
+                g.gain.exponentialRampToValueAtTime(0.001, t + dur * 0.95);
+                o.connect(g).connect(audioCtx.destination);
+                o.start(t); o.stop(t + dur);
+                // walking bass an octave and a fifth down
+                const b = audioCtx.createOscillator();
+                const bg = audioCtx.createGain();
+                b.type = 'sine';
+                b.frequency.value = 440 * Math.pow(2, (note - 69 - 19) / 12);
+                bg.gain.setValueAtTime(0.12, t);
+                bg.gain.exponentialRampToValueAtTime(0.001, t + dur * 0.8);
+                b.connect(bg).connect(audioCtx.destination);
+                b.start(t); b.stop(t + dur);
+            }
+            t += dur;
+        }
+        const total = t - audioCtx.currentTime;
+        engine.jukeboxUntil = performance.now() + total * 1000;
+        return total;
     }
 
     function updateSentenceBar() {
@@ -1938,6 +2739,28 @@
             case 'map':
                 f(9, 6, 26, 19, '#e8d3a2'); f(17, 6, 1, 19, '#b49461'); f(26, 6, 1, 19, '#b49461');
                 f(12, 15, 18, 1, '#b91c1c');
+                break;
+            case 'photo':
+                f(10, 5, 24, 21, '#f5f0e1'); f(12, 7, 20, 14, '#3b2f2a'); f(14, 13, 4, 8, '#a8a29e'); f(24, 11, 5, 10, '#78716c'); f(20, 16, 3, 5, '#d6b98c');
+                break;
+            case 'note':
+                f(11, 6, 22, 19, '#fef3c7'); f(14, 10, 16, 1, '#57534e'); f(14, 14, 13, 1, '#57534e'); f(14, 18, 15, 1, '#57534e');
+                break;
+            case 'token':
+                f(15, 8, 14, 14, '#b45309'); f(17, 6, 10, 18, '#b45309'); f(17, 10, 10, 10, '#f59e0b'); f(21, 12, 2, 6, '#92400e');
+                break;
+            case 'envelope':
+                f(8, 8, 28, 17, '#e7d8b1'); f(8, 8, 28, 2, '#c8b68a');
+                ic.strokeStyle = '#a8946a'; ic.lineWidth = 1; ic.beginPath(); ic.moveTo(8, 9); ic.lineTo(22, 18); ic.lineTo(36, 9); ic.stroke();
+                break;
+            case 'letter':
+                f(12, 4, 20, 23, '#f5ecd6'); f(15, 8, 14, 1, '#1e3a8a'); f(15, 12, 12, 1, '#1e3a8a'); f(15, 16, 14, 1, '#1e3a8a'); f(15, 20, 9, 1, '#1e3a8a');
+                break;
+            case 'brasskey':
+                f(10, 12, 7, 7, '#d4a017'); f(12, 14, 3, 3, '#111827'); f(17, 15, 15, 2, '#d4a017'); f(28, 17, 2, 4, '#d4a017'); f(31, 17, 1, 3, '#d4a017');
+                break;
+            case 'book':
+                f(10, 5, 24, 21, '#6b3e1f'); f(12, 5, 2, 21, '#4a2a14'); f(16, 9, 14, 2, '#d4a017'); f(16, 13, 10, 1, '#d4a017');
                 break;
         }
     }
@@ -2014,13 +2837,88 @@
         `);
     }
 
+    // The map doubles as the travel screen between cities.
+    const DESTINATIONS = [
+        { id: 'yard',    label: "MA'AYAN BARUCH", open: () => true },
+        { id: 'club',    label: 'NEW YORK',       open: () => flags.act2Started },
+        { id: 'library', label: 'BOSTON',         open: () => flags.bostonUnlocked },
+        { id: null,      label: 'LONDON',         open: () => false },
+        { id: null,      label: 'AMSTERDAM',      open: () => false },
+        { id: null,      label: 'HAIFA',          open: () => false }
+    ];
+
     function showMap() {
         const img = mapImageSrc ? `<img src="${mapImageSrc}" alt="Old map">` : '';
+        const canTravel = flags.act2Started;
+        const btns = canTravel ? DESTINATIONS.map((d, i) => {
+            const here = d.id === engine.currentRoomId || (d.id === 'yard' && engine.currentRoomId === 'studio');
+            const ok = d.open() && !here;
+            return `<button class="ed-btn ${ok ? 'primary' : ''}" data-dest="${i}" ${ok ? '' : 'disabled'}>${d.label}${here ? ' (HERE)' : ''}</button>`;
+        }).join('') : '';
         showModal(`
             <h2>THE OLD MAP</h2>
             ${img}
             <p>A dotted red route: New York and Boston, across the Atlantic to London and Amsterdam, then down through the Mediterranean to Haifa.</p>
-            <div class="modal-btns"><button class="ed-btn primary" data-close>FOLD IT UP</button></div>
+            ${canTravel ? '<p style="color:#facc15;">Where to next?</p>' : ''}
+            <div class="modal-btns">${btns}</div>
+            <div class="modal-btns" style="margin-top:8px;"><button class="ed-btn" data-close>FOLD IT UP</button></div>
+        `);
+        modalBox.querySelectorAll('[data-dest]').forEach(b => b.addEventListener('click', () => {
+            const d = DESTINATIONS[Number(b.getAttribute('data-dest'))];
+            closeModal();
+            travelTo(d.id);
+        }));
+    }
+
+    function travelTo(roomId) {
+        hideChoices();
+        loadRoom(roomId);
+        if (roomId === 'library' && !flags.libraryVisited) {
+            flags.libraryVisited = true;
+            sayLines([[null, "Ada Whitcombe's library. Nobody here but the books, and the rain. She must have left something for whoever came."]]);
+        }
+    }
+
+    function showLouLetter() {
+        showModal(`
+            <div class="bday-card" style="background:#f5ecd6;">
+                <p><em>To the family of David Fine,</em></p>
+                <p>If you are reading this, Sal kept his promise, and you heard my song.</p>
+                <p>Your grandfather walked into the Iron Lily in the winter of 1952. A sculptor from Johannesburg, by way of Haifa, in town for a show nobody came to. He sat at my bar three nights running and drew my hands while I played.</p>
+                <p>On the fourth night he gave me the drawing, and I gave him a song. That's a fair trade in my business.</p>
+                <p>Before he sailed home he left his New World sketchbook with our friend Ada Whitcombe, at her library on Beacon Hill in Boston. He said it held "the next stretch of the road," and that his family should find it, not him.</p>
+                <p>The little brass key is Ada's. Don't lose it.</p>
+                <p class="bday-sign">Play it slow,<br>Lou Hartley</p>
+            </div>
+            <div class="modal-btns"><button class="ed-btn primary" data-close>FOLD THE LETTER</button></div>
+        `);
+    }
+
+    function showSketchbook() {
+        showModal(`
+            <div class="bday-card" style="background:#efe6cf;">
+                <div class="bday-front">D. FINE - NEW WORLD - 1952</div>
+                <p>Page after page in soft pencil: Lou's huge hands on the bass strings. Sal, much younger, laughing behind the bar. Boston harbour in the fog. Ada at this very desk, peering over her glasses.</p>
+                <p>On the last page, a careful drawing of the ironstone, and next to it a second stone, the same shape, the same rough skin. Under it Grandpa wrote:</p>
+                <p><em>"The stone has a brother. I left it in London, in Mr. Pemberton's care, at the archive in the basement where the specimen crates are kept. When you have both, Mevrouw Brouwer in Amsterdam will know what to do."</em></p>
+            </div>
+            <div class="modal-btns">
+                ${flags.act2Complete ? '' : '<button class="ed-btn primary" id="act2-done-btn">CLOSE THE BOOK</button>'}
+                ${flags.act2Complete ? '<button class="ed-btn primary" data-close>CLOSE THE BOOK</button>' : ''}
+            </div>
+        `);
+        const b = document.getElementById('act2-done-btn');
+        if (b) b.addEventListener('click', showAct2Complete);
+    }
+
+    function showAct2Complete() {
+        flags.act2Complete = true;
+        showModal(`
+            <h2>ACT II COMPLETE: THE NEW WORLD</h2>
+            <p>A jazz tune nobody had played in decades, a promise kept behind a bar for thirty years, and a sketchbook that waited in a stone owl's belly for you to come and find it.</p>
+            <p>Grandpa David crossed the Atlantic east from Boston. Now it's your turn: a basement archive in London, a man called Pemberton, and the ironstone's long-lost brother.</p>
+            <p style="color:#facc15;">The journey continues in Act III: The Old World.</p>
+            <div class="modal-btns"><button class="ed-btn primary" data-close>KEEP EXPLORING</button></div>
         `);
     }
 
@@ -2029,16 +2927,26 @@
             <h2>ACT I COMPLETE: MA'AYAN BARUCH</h2>
             <p>The basalt figure holds the ironstone high, the way Grandpa David always meant it to.</p>
             <p>Deep inside the plinth, a hidden drawer has slid open. Inside: a photograph of a jazz club, an address in Amsterdam, and the old map's route, traced in Grandpa's hand.</p>
-            <p style="color:#facc15;">The journey continues in Act II.</p>
-            <div class="modal-btns"><button class="ed-btn primary" data-close>KEEP EXPLORING</button></div>
+            <p style="color:#facc15;">The journey continues in Act II: The New World.</p>
+            <div class="modal-btns">
+                <button class="ed-btn primary" id="start-act2-btn">CONTINUE TO NEW YORK</button>
+                <button class="ed-btn" data-close>STAY A WHILE</button>
+            </div>
         `);
+        document.getElementById('start-act2-btn').addEventListener('click', startAct2);
     }
 
     // =========================================================================
     // 12. UI BUTTONS, KEYBOARD & JSON EXPORT
     // =========================================================================
     document.querySelectorAll('.scumm-pill[data-room]').forEach(btn => {
-        btn.addEventListener('click', () => loadRoom(btn.getAttribute('data-room')));
+        btn.addEventListener('click', () => {
+            const id = btn.getAttribute('data-room');
+            if ((id === 'club' || id === 'library') && !flags.act2Started) startAct2();
+            if (id === 'library') flags.bostonUnlocked = true;
+            hideChoices();
+            loadRoom(id);
+        });
     });
 
     document.querySelectorAll('.verb-btn').forEach(btn => {
@@ -2061,6 +2969,21 @@
         debugBtn.classList.toggle('active', engine.showPhysicsDebug);
     }
     debugBtn.addEventListener('click', togglePhysicsDebug);
+
+    const voiceBtn = document.getElementById('btn-voice');
+    function refreshVoiceBtn() {
+        voiceBtn.classList.toggle('active', voice.supported && voice.enabled);
+        voiceBtn.textContent = voice.supported ? `[V] VOICE ${voice.enabled ? 'ON' : 'OFF'}` : 'VOICE N/A';
+    }
+    function toggleVoice() {
+        if (!voice.supported) return;
+        voice.enabled = !voice.enabled;
+        try { localStorage.setItem('fineLegacy.voice', voice.enabled ? 'on' : 'off'); } catch (e) {}
+        refreshVoiceBtn();
+        if (voice.enabled) speak('Voice on.'); else stopVoice();
+    }
+    voiceBtn.addEventListener('click', toggleVoice);
+    refreshVoiceBtn();
 
     document.getElementById('btn-edit-mode').addEventListener('click', () => toggleEditMode());
     document.getElementById('ed-done-btn').addEventListener('click', () => toggleEditMode(false));
@@ -2165,7 +3088,14 @@
 
         if (e.code === 'Escape') {
             if (engine.modalOpen) closeModal();
+            else if (engine.choicesOpen) hideChoices();
             else clearSelection();
+            return;
+        }
+        // Number keys pick a dialogue choice
+        if (engine.choicesOpen && /^Digit[1-9]$/.test(e.code)) {
+            const btn = choicesEl.children[Number(e.code.slice(5)) - 1];
+            if (btn) btn.click();
             return;
         }
         if (engine.modalOpen) return;
@@ -2178,7 +3108,10 @@
         } else if (e.code === 'KeyP' && !e.repeat) {
             togglePhysicsDebug();
         } else if (e.code === 'Period') {
-            engine.dialogueTimer = 0; // skip current line
+            engine.dialogueTimer = 0; // skip current line (the next queued line follows)
+            stopVoice();
+        } else if (e.code === 'KeyV' && !e.repeat) {
+            toggleVoice();
         } else if ((e.code === 'Backspace' || e.code === 'Delete') && engine.editMode && engine.editor.selectedColliderId) {
             document.getElementById('ed-delete-box').click();
         }
@@ -2212,7 +3145,7 @@
     }
 
     // Debug/testing handle (handy in the browser console)
-    window.fineLegacy = { engine, flags, ROOMS, loadRoom, addItem, step: updateEngine, render: renderScene };
+    window.fineLegacy = { engine, flags, ROOMS, loadRoom, addItem, startAct2, travelTo, step: updateEngine, render: renderScene };
 
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', init);
